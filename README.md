@@ -15,8 +15,6 @@ A Model Context Protocol (MCP) server that provides browser automation capabilit
 - Automated testing driven by LLMs
 - General-purpose browser interaction for agents
 
-## Requirements
-
 ### Example config
 
 ```js
