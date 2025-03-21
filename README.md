@@ -23,7 +23,7 @@ A Model Context Protocol (MCP) server that provides browser automation capabilit
     "playwright": {
       "command": "npx",
       "args": [
-        "@playwright/mcp",
+        "@playwright/mcp@latest",
       ]
     }
   }
@@ -40,7 +40,7 @@ This mode is useful for background or batch operations.
     "playwright": {
       "command": "npx",
       "args": [
-        "@playwright/mcp",
+        "@playwright/mcp@latest",
         "--headless"
       ]
     }
@@ -66,7 +66,7 @@ And then in MCP config, add following to the `env`:
     "playwright": {
       "command": "npx",
       "args": [
-        "@playwright/mcp"
+        "@playwright/mcp@latest"
       ],
       "env": {
         // Use the endpoint from the output of the server above.
@@ -92,7 +92,7 @@ To use Vision Mode, add the `--vision` flag when starting the server:
     "playwright": {
       "command": "npx",
       "args": [
-        "@playwright/mcp",
+        "@playwright/mcp@latest",
         "--vision"
       ]
     }
