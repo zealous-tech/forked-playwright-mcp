@@ -1,9 +1,40 @@
 ## Playwright MCP
 
-This package is experimental and not yet ready for production use.
-It is a subject to change and will not respect semver versioning.
+A Model Context Protocol (MCP) server that provides browser automation capabilities using [Playwright](https://playwright.dev). This server enables LLMs to interact with web pages through structured accessibility snapshots, bypassing the need for screenshots or visually-tuned models.
+
+### Key Features
+
+- **Fast and lightweight**: Uses Playwright’s accessibility tree, not pixel-based input.
+- **LLM-friendly**: No vision models needed, operates purely on structured data.
+- **Deterministic tool application**: Avoids ambiguity common with screenshot-based approaches.
+
+### Use Cases
+
+- Web navigation and form-filling
+- Data extraction from structured content
+- Automated testing driven by LLMs
+- General-purpose browser interaction for agents
+
+## Requirements
 
 ### Example config
+
+```js
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp",
+      ]
+    }
+  }
+}
+```
+
+### Running headless browser (Browser without GUI).
+
+This mode is useful for background or batch operations.
 
 ```js
 {
@@ -19,22 +50,7 @@ It is a subject to change and will not respect semver versioning.
 }
 ```
 
-### Running headed browser (Browser with GUI).
-
-```js
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "@playwright/mcp"
-      ]
-    }
-  }
-}
-```
-
-### Running headed browser on Linux
+### Running headed browser on Linux w/o DISPLAY
 
 When running headed browser on system w/o display or from worker processes of the IDEs,
 you can run Playwright in a client-server manner. You'll run the Playwright server

@@ -49,7 +49,10 @@ export class Context {
       const browser = await this._createBrowser();
       this._page = await browser.newPage();
       this._page.on('console', event => this._console.push(event));
-      this._page.on('framenavigated', () => this._console.length = 0);
+      this._page.on('framenavigated', frame => {
+        if (!frame.parentFrame())
+          this._console.length = 0
+      });
     })();
     return this._initializePromise;
   }
