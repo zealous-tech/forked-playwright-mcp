@@ -51,7 +51,7 @@ export class Context {
       this._page.on('console', event => this._console.push(event));
       this._page.on('framenavigated', frame => {
         if (!frame.parentFrame())
-          this._console.length = 0
+          this._console.length = 0;
       });
     })();
     return this._initializePromise;
