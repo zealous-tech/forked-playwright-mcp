@@ -38,7 +38,9 @@ Install the Playwright MCP server using the VS Code CLI:
 ```bash
 # For VS Code
 code --add-mcp '{"name":"playwright","command":"npx","args":["@playwright/mcp@latest"]}'
+```
 
+```bash
 # For VS Code Insiders
 code-insiders --add-mcp '{"name":"playwright","command":"npx","args":["@playwright/mcp@latest"]}'
 ```
