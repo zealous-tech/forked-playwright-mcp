@@ -93,7 +93,7 @@ class MCPServer extends EventEmitter {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         reject(new Error('Timeout waiting for message'));
-      }, options.timeout || 5000);
+      }, options.timeout || 15000);
 
       this._messageResolvers.push(message => {
         clearTimeout(timeoutId);
