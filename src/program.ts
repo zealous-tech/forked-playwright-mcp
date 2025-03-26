@@ -69,7 +69,7 @@ async function userDataDir() {
     cacheDirectory = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
   else
     throw new Error('Unsupported platform: ' + process.platform);
-  const result = path.join(cacheDirectory, 'ms-playwright', 'mcp-chromium-profile');
+  const result = path.join(cacheDirectory, 'ms-playwright', 'mcp-chrome-profile');
   await fs.promises.mkdir(result, { recursive: true });
   return result;
 }

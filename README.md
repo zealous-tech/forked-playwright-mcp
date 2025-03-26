@@ -59,6 +59,18 @@ code-insiders --add-mcp '{"name":"playwright","command":"npx","args":["@playwrig
 
 After installation, the Playwright MCP server will be available for use with your GitHub Copilot agent in VS Code.
 
+### User data directory
+
+Playwright MCP will launch Chrome browser with the new profile, located at
+
+```
+- `%USERPROFILE%\AppData\Local\ms-playwright\mcp-chrome-profile` on Windows
+- `~/Library/Caches/ms-playwright/mcp-chrome-profile` on macOS
+- `~/.cache/ms-playwright/mcp-chrome-profile` on Linux
+```
+
+All the logged in information will be stored in that profile, you can delete it between sessions if you'dlike to clear the offline state.
+
 
 ### Running headless browser (Browser without GUI).
 
