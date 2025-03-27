@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import fs from 'fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { test, expect } from './fixtures';
@@ -37,6 +38,9 @@ test('test tool list', async ({ server, visionServer }) => {
         }),
         expect.objectContaining({
           name: 'browser_go_forward',
+        }),
+        expect.objectContaining({
+          name: 'browser_choose_file',
         }),
         expect.objectContaining({
           name: 'browser_snapshot',
@@ -453,6 +457,83 @@ test('stitched aria frames', async ({ server }) => {
       }],
     },
   }));
+});
+
+test('browser_choose_file', async ({ server }) => {
+  let response = await server.send({
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'browser_navigate',
+      arguments: {
+        url: 'data:text/html,<html><title>Title</title><input type="file" /><button>Button</button></html>',
+      },
+    },
+  });
+
+  expect(response.result.content[0].text).toContain('- textbox [ref=s1e4]');
+
+  response = await server.send({
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'browser_click',
+      arguments: {
+        element: 'Textbox',
+        ref: 's1e4',
+      },
+    },
+  });
+
+  expect(response.result.content[0].text).toContain('There is a file chooser visible that requires browser_choose_file to be called');
+
+  const filePath = test.info().outputPath('test.txt');
+  await fs.writeFile(filePath, 'Hello, world!');
+  response = await server.send({
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'browser_choose_file',
+      arguments: {
+        paths: [filePath],
+      },
+    },
+  });
+
+  expect(response.result.content[0].text).not.toContain('There is a file chooser visible that requires browser_choose_file to be called');
+  expect(response.result.content[0].text).toContain('textbox [ref=s3e4]: C:\\fakepath\\test.txt');
+
+  response = await server.send({
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'browser_click',
+      arguments: {
+        element: 'Textbox',
+        ref: 's3e4',
+      },
+    },
+  });
+  expect(response.result.content[0].text).toContain('There is a file chooser visible that requires browser_choose_file to be called');
+  expect(response.result.content[0].text).toContain('button "Button" [ref=s4e5]');
+
+  response = await server.send({
+    jsonrpc: '2.0',
+    id: 2,
+    method: 'tools/call',
+    params: {
+      name: 'browser_click',
+      arguments: {
+        element: 'Button',
+        ref: 's4e5',
+      },
+    },
+  });
+  expect(response.result.content[0].text, 'not submitting browser_choose_file dismisses file chooser').not.toContain('There is a file chooser visible that requires browser_choose_file to be called');
 });
 
 test('sse transport', async () => {
