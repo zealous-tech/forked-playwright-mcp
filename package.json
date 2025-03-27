@@ -20,7 +20,7 @@
     "watch": "tsc --watch",
     "test": "playwright test",
     "clean": "rm -rf lib",
-    "publish": "npm run clean && npm run build && npm run test && npm publish"
+    "npm-publish": "npm run clean && npm run build && npm run test && npm publish"
   },
   "exports": {
     "./package.json": "./package.json",
