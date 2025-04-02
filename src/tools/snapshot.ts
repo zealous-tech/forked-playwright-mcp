@@ -101,7 +101,8 @@ export const hover: Tool = {
 
 const typeSchema = elementSchema.extend({
   text: z.string().describe('Text to type into the element'),
-  submit: z.boolean().describe('Whether to submit entered text (press Enter after)'),
+  submit: z.boolean().optional().describe('Whether to submit entered text (press Enter after)'),
+  slowly: z.boolean().optional().describe('Wether to type one character at a time. Useful for triggering key handlers in the page. By default entire text is filled in at once.'),
 });
 
 export const type: Tool = {
@@ -115,7 +116,10 @@ export const type: Tool = {
     const validatedParams = typeSchema.parse(params);
     return await context.runAndWaitWithSnapshot(async () => {
       const locator = context.lastSnapshot().refLocator(validatedParams.ref);
-      await locator.fill(validatedParams.text);
+      if (validatedParams.slowly)
+        await locator.pressSequentially(validatedParams.text);
+      else
+        await locator.fill(validatedParams.text);
       if (validatedParams.submit)
         await locator.press('Enter');
     }, {

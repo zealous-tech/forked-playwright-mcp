@@ -368,3 +368,61 @@ test('executable path', async ({ startClient }) => {
   });
   expect(response).toContainTextContent(`executable doesn't exist`);
 });
+
+test('fill in text', async ({ client }) => {
+  await client.callTool({
+    name: 'browser_navigate',
+    arguments: {
+      url: `data:text/html,<input type='keypress' onkeypress="console.log('Key pressed:', event.key, ', Text:', event.target.value)"></input>`,
+    },
+  });
+  await client.callTool({
+    name: 'browser_type',
+    arguments: {
+      element: 'textbox',
+      ref: 's1e3',
+      text: 'Hi!',
+      submit: true,
+    },
+  });
+  const resource = await client.readResource({
+    uri: 'browser://console',
+  });
+  expect(resource.contents).toEqual([{
+    uri: 'browser://console',
+    mimeType: 'text/plain',
+    text: '[LOG] Key pressed: Enter , Text: Hi!',
+  }]);
+});
+
+test('type slowly', async ({ client }) => {
+  await client.callTool({
+    name: 'browser_navigate',
+    arguments: {
+      url: `data:text/html,<input type='text' onkeydown="console.log('Key pressed:', event.key, 'Text:', event.target.value)"></input>`,
+    },
+  });
+  await client.callTool({
+    name: 'browser_type',
+    arguments: {
+      element: 'textbox',
+      ref: 's1e3',
+      text: 'Hi!',
+      submit: true,
+      slowly: true,
+    },
+  });
+  const resource = await client.readResource({
+    uri: 'browser://console',
+  });
+  expect(resource.contents).toEqual([{
+    uri: 'browser://console',
+    mimeType: 'text/plain',
+    text: [
+      '[LOG] Key pressed: H Text: ',
+      '[LOG] Key pressed: i Text: H',
+      '[LOG] Key pressed: ! Text: Hi',
+      '[LOG] Key pressed: Enter Text: Hi!',
+    ].join('\n'),
+  }]);
+});

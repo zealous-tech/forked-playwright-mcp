@@ -114,7 +114,7 @@ export const drag: Tool = {
 
 const typeSchema = z.object({
   text: z.string().describe('Text to type into the element'),
-  submit: z.boolean().describe('Whether to submit entered text (press Enter after)'),
+  submit: z.boolean().optional().describe('Whether to submit entered text (press Enter after)'),
 });
 
 export const type: Tool = {
