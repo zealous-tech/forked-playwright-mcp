@@ -19,6 +19,7 @@
     "lint": "eslint .",
     "watch": "tsc --watch",
     "test": "playwright test",
+    "ctest": "playwright test --project=chrome",
     "clean": "rm -rf lib",
     "npm-publish": "npm run clean && npm run build && npm run test && npm publish"
   },

@@ -28,6 +28,10 @@ type Fixtures = {
   startClient: (options?: { args?: string[] }) => Promise<Client>;
   wsEndpoint: string;
   cdpEndpoint: string;
+
+  // Cli options.
+  mcpHeadless: boolean;
+  mcpBrowser: string | undefined;
 };
 
 export const test = baseTest.extend<Fixtures>({
@@ -40,12 +44,16 @@ export const test = baseTest.extend<Fixtures>({
     await use(await startClient({ args: ['--vision'] }));
   },
 
-  startClient: async ({ }, use, testInfo) => {
+  startClient: async ({ mcpHeadless, mcpBrowser }, use, testInfo) => {
     const userDataDir = testInfo.outputPath('user-data-dir');
     let client: StdioClientTransport | undefined;
 
     use(async options => {
-      const args = ['--headless', '--user-data-dir', userDataDir];
+      const args = ['--user-data-dir', userDataDir];
+      if (mcpHeadless)
+        args.push('--headless');
+      if (mcpBrowser)
+        args.push(`--browser=${mcpBrowser}`);
       if (options?.args)
         args.push(...options.args);
       const transport = new StdioClientTransport({
@@ -89,6 +97,12 @@ export const test = baseTest.extend<Fixtures>({
     await use(`http://localhost:${port}`);
     browserProcess.kill();
   },
+
+  mcpHeadless: async ({ headless }, use) => {
+    await use(headless);
+  },
+
+  mcpBrowser: ['chromium', { option: true }],
 });
 
 type Response = Awaited<ReturnType<Client['callTool']>>;

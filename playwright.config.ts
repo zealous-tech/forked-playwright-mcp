@@ -16,6 +16,8 @@
 
 import { defineConfig } from '@playwright/test';
 
+import type { Project } from '@playwright/test';
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -23,5 +25,11 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
-  projects: [{ name: 'default' }],
+  projects: [
+    { name: 'chrome' },
+    { name: 'msedge', use: { mcpBrowser: 'msedge' } },
+    { name: 'chromium', use: { mcpBrowser: 'chromium' } },
+    { name: 'firefox', use: { mcpBrowser: 'firefox' } },
+    { name: 'webkit', use: { mcpBrowser: 'webkit' } },
+  ].filter(Boolean) as Project[],
 });
