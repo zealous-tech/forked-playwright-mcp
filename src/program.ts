@@ -74,7 +74,7 @@ program
       }
 
       const launchOptions: LaunchOptions = {
-        headless: options.headless ?? !process.env.DISPLAY,
+        headless: !!(options.headless ?? (os.platform() === 'linux' && !process.env.DISPLAY)),
         channel,
         executablePath: options.executablePath,
       };
