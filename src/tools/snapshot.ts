@@ -19,6 +19,9 @@ import zodToJsonSchema from 'zod-to-json-schema';
 
 import type * as playwright from 'playwright';
 import type { Tool } from './tool';
+import path from 'path';
+import os from 'os';
+import { sanitizeForFilePath } from './utils';
 import { generateLocator } from '../context';
 import * as javascript from '../javascript';
 
@@ -185,6 +188,13 @@ const selectOption: Tool = {
 
 const screenshotSchema = z.object({
   raw: z.boolean().optional().describe('Whether to return without compression (in PNG format). Default is false, which returns a JPEG image.'),
+  element: z.string().optional().describe('Human-readable element description used to obtain permission to interact with the element. If not provided, the screenshot will be taken of viewport. If element is provided, ref must be provided too.'),
+  ref: z.string().optional().describe('Exact target element reference from the page snapshot. If not provided, the screenshot will be taken of viewport. If ref is provided, element must be provided too.'),
+}).refine(data => {
+  return (!data.element) === (!data.ref);
+}, {
+  message: 'Both element and ref must be provided or neither.',
+  path: ['ref', 'element']
 });
 
 const screenshot: Tool = {
@@ -198,13 +208,35 @@ const screenshot: Tool = {
   handle: async (context, params) => {
     const validatedParams = screenshotSchema.parse(params);
     const tab = context.currentTab();
-    const options: playwright.PageScreenshotOptions = validatedParams.raw ? { type: 'png', scale: 'css' } : { type: 'jpeg', quality: 50, scale: 'css' };
-    const screenshot = await tab.page.screenshot(options);
-    return {
-      content: [{ type: 'image', data: screenshot.toString('base64'), mimeType: validatedParams.raw ? 'image/png' : 'image/jpeg' }],
-    };
-  },
+    const fileType = validatedParams.raw ? 'png' : 'jpeg';
+    const fileName = path.join(os.tmpdir(), sanitizeForFilePath(`page-${new Date().toISOString()}`)) + `.${fileType}`;
+    const options: playwright.PageScreenshotOptions = { type: fileType, quality: fileType === 'png' ? undefined : 50, scale: 'css', path: fileName };
+    const isElementScreenshot = validatedParams.element && validatedParams.ref;
+    return await context.currentTab().runAndWaitWithSnapshot(async snapshot => {
+      let screenshot: Buffer | undefined;
+      const code = [
+        `// Screenshot ${isElementScreenshot ? validatedParams.element : 'viewport'}`,
+      ];
+      if (isElementScreenshot) {
+        const locator = snapshot.refLocator(validatedParams.ref!);
+        code.push(`await page.${await generateLocator(locator)}.screenshot(${javascript.formatObject(options)});`);
+        screenshot = await locator.screenshot(options);
+      } else {
+        code.push(`await page.screenshot(${javascript.formatObject(options)});`);
+        screenshot = await tab.page.screenshot(options);
+      }
+      code.push(`// Screenshot saved as ${fileName}`);
+      return {
+        code,
+        images: [{
+          data: screenshot.toString('base64'),
+          mimeType: fileType === 'png' ? 'image/png' : 'image/jpeg',
+        }]
+      };
+    }, { captureSnapshot: false });
+  }
 };
+
 
 export default [
   snapshot,
