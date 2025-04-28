@@ -14,18 +14,13 @@
  * limitations under the License.
  */
 
-import http from 'http';
-
 import { program } from 'commander';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-
 
 import { createServer } from './index';
 import { ServerList } from './server';
 
-import assert from 'assert';
 import { ToolCapability } from './tools/tool';
+import { startHttpTransport, startStdioTransport } from './transport';
 
 const packageJSON = require('../package.json');
 
@@ -53,12 +48,10 @@ program
       }));
       setupExitWatchdog(serverList);
 
-      if (options.port) {
-        startSSEServer(+options.port, options.host || 'localhost', serverList);
-      } else {
-        const server = await serverList.create();
-        await server.connect(new StdioServerTransport());
-      }
+      if (options.port)
+        startHttpTransport(+options.port, options.host, serverList);
+      else
+        await startStdioTransport(serverList);
     });
 
 function setupExitWatchdog(serverList: ServerList) {
@@ -74,64 +67,3 @@ function setupExitWatchdog(serverList: ServerList) {
 }
 
 program.parse(process.argv);
-
-function startSSEServer(port: number, host: string, serverList: ServerList) {
-  const sessions = new Map<string, SSEServerTransport>();
-  const httpServer = http.createServer(async (req, res) => {
-    if (req.method === 'POST') {
-      const searchParams = new URL(`http://localhost${req.url}`).searchParams;
-      const sessionId = searchParams.get('sessionId');
-      if (!sessionId) {
-        res.statusCode = 400;
-        res.end('Missing sessionId');
-        return;
-      }
-      const transport = sessions.get(sessionId);
-      if (!transport) {
-        res.statusCode = 404;
-        res.end('Session not found');
-        return;
-      }
-
-      await transport.handlePostMessage(req, res);
-      return;
-    } else if (req.method === 'GET') {
-      const transport = new SSEServerTransport('/sse', res);
-      sessions.set(transport.sessionId, transport);
-      const server = await serverList.create();
-      res.on('close', () => {
-        sessions.delete(transport.sessionId);
-        serverList.close(server).catch(e => console.error(e));
-      });
-      await server.connect(transport);
-      return;
-    } else {
-      res.statusCode = 405;
-      res.end('Method not allowed');
-    }
-  });
-
-  httpServer.listen(port, host, () => {
-    const address = httpServer.address();
-    assert(address, 'Could not bind server socket');
-    let url: string;
-    if (typeof address === 'string') {
-      url = address;
-    } else {
-      const resolvedPort = address.port;
-      let resolvedHost = address.family === 'IPv4' ? address.address : `[${address.address}]`;
-      if (resolvedHost === '0.0.0.0' || resolvedHost === '[::]')
-        resolvedHost = host === 'localhost' ? 'localhost' : resolvedHost;
-      url = `http://${resolvedHost}:${resolvedPort}`;
-    }
-    console.log(`Listening on ${url}`);
-    console.log('Put this in your client config:');
-    console.log(JSON.stringify({
-      'mcpServers': {
-        'playwright': {
-          'url': `${url}/sse`
-        }
-      }
-    }, undefined, 2));
-  });
-}
