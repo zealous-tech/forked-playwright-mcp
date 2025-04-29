@@ -30,6 +30,17 @@ test('browser_file_upload', async ({ client }) => {
   - button "Button" [ref=s1e4]
 \`\`\``);
 
+  {
+    expect(await client.callTool({
+      name: 'browser_file_upload',
+      arguments: { paths: [] },
+    })).toHaveTextContent(`
+The tool "browser_file_upload" can only be used when there is related modal state present.
+### Modal state
+- There is no modal state present
+      `.trim());
+  }
+
   expect(await client.callTool({
     name: 'browser_click',
     arguments: {
