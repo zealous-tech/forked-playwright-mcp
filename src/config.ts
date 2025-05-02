@@ -20,10 +20,9 @@ import os from 'os';
 import path from 'path';
 import { devices } from 'playwright';
 
-import { sanitizeForFilePath } from './tools/utils.js';
-
 import type { Config, ToolCapability } from '../config.js';
 import type { BrowserContextOptions, LaunchOptions } from 'playwright';
+import { sanitizeForFilePath } from './tools/utils.js';
 
 export type CLIOptions = {
   browser?: string;

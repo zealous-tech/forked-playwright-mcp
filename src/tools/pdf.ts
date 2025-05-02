@@ -31,7 +31,7 @@ const pdf = defineTool({
 
   handle: async context => {
     const tab = context.currentTabOrDie();
-    const fileName = await outputFile(context.config, `page-${new Date().toISOString()}'.pdf'`);
+    const fileName = await outputFile(context.config, `page-${new Date().toISOString()}.pdf`);
 
     const code = [
       `// Save page as ${fileName}`,
