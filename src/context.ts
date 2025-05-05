@@ -290,11 +290,26 @@ ${code.join('\n')}
     }).catch(() => {});
   }
 
+  private async _setupRequestInterception(context: playwright.BrowserContext) {
+    if (this.config.network?.allowedOrigins?.length) {
+      await context.route('**', route => route.abort('blockedbyclient'));
+
+      for (const origin of this.config.network.allowedOrigins)
+        await context.route(`*://${origin}/**`, route => route.continue());
+    }
+
+    if (this.config.network?.blockedOrigins?.length) {
+      for (const origin of this.config.network.blockedOrigins)
+        await context.route(`*://${origin}/**`, route => route.abort('blockedbyclient'));
+    }
+  }
+
   private async _ensureBrowserContext() {
     if (!this._browserContext) {
       const context = await this._createBrowserContext();
       this._browser = context.browser;
       this._browserContext = context.browserContext;
+      await this._setupRequestInterception(this._browserContext);
       for (const page of this._browserContext.pages())
         this._onPageCreated(page);
       this._browserContext.on('page', page => this._onPageCreated(page));

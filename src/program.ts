@@ -37,6 +37,8 @@ program
     .option('--user-data-dir <path>', 'Path to the user data directory')
     .option('--port <port>', 'Port to listen on for SSE transport.')
     .option('--host <host>', 'Host to bind server to. Default is localhost. Use 0.0.0.0 to bind to all interfaces.')
+    .option('--allowed-origins <origins>', 'Semicolon-separated list of origins to allow the browser to request. Default is to allow all.', semicolonSeparatedList)
+    .option('--blocked-origins <origins>', 'Semicolon-separated list of origins to block the browser from requesting. Blocklist is evaluated before allowlist. If used without the allowlist, requests not matching the blocklist are still allowed.', semicolonSeparatedList)
     .option('--vision', 'Run server that uses screenshots (Aria snapshots are used by default)')
     .option('--output-dir <path>', 'Path to the directory for output files.')
     .option('--config <path>', 'Path to the configuration file.')
@@ -61,6 +63,10 @@ function setupExitWatchdog(serverList: ServerList) {
   process.stdin.on('close', handleExit);
   process.on('SIGINT', handleExit);
   process.on('SIGTERM', handleExit);
+}
+
+function semicolonSeparatedList(value: string): string[] {
+  return value.split(';').map(v => v.trim());
 }
 
 program.parse(process.argv);

@@ -36,6 +36,8 @@ export type CLIOptions = {
   host?: string;
   vision?: boolean;
   config?: string;
+  allowedOrigins?: string[];
+  blockedOrigins?: string[];
   outputDir?: string;
 };
 
@@ -49,6 +51,10 @@ const defaultConfig: Config = {
     contextOptions: {
       viewport: null,
     },
+  },
+  network: {
+    allowedOrigins: undefined,
+    blockedOrigins: undefined,
   },
 };
 
@@ -110,6 +116,10 @@ export async function configFromCLIOptions(cliOptions: CLIOptions): Promise<Conf
     },
     capabilities: cliOptions.caps?.split(',').map((c: string) => c.trim() as ToolCapability),
     vision: !!cliOptions.vision,
+    network: {
+      allowedOrigins: cliOptions.allowedOrigins,
+      blockedOrigins: cliOptions.blockedOrigins,
+    },
     outputDir: cliOptions.outputDir,
   };
 }
@@ -171,5 +181,9 @@ function mergeConfig(base: Config, overrides: Config): Config {
     ...pickDefined(base),
     ...pickDefined(overrides),
     browser,
+    network: {
+      ...pickDefined(base.network),
+      ...pickDefined(overrides.network),
+    },
   };
 }
