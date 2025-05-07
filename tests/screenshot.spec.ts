@@ -73,8 +73,8 @@ test('browser_take_screenshot (element)', async ({ client }) => {
   });
 });
 
-test('--output-dir should work', async ({ startClient }, testInfo) => {
-  const outputDir = testInfo.outputPath('output');
+test('--output-dir should work', async ({ startClient, localOutputPath }) => {
+  const outputDir = localOutputPath('output');
   const client = await startClient({
     args: ['--output-dir', outputDir],
   });
@@ -95,8 +95,8 @@ test('--output-dir should work', async ({ startClient }, testInfo) => {
 });
 
 
-test('browser_take_screenshot (outputDir)', async ({ startClient }, testInfo) => {
-  const outputDir = testInfo.outputPath('output');
+test('browser_take_screenshot (outputDir)', async ({ startClient, localOutputPath }) => {
+  const outputDir = localOutputPath('output');
   const client = await startClient({
     config: { outputDir },
   });
