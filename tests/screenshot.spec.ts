@@ -94,9 +94,54 @@ test('--output-dir should work', async ({ startClient, localOutputPath }) => {
   expect([...fs.readdirSync(outputDir)]).toHaveLength(1);
 });
 
+for (const raw of [undefined, true]) {
+  test(`browser_take_screenshot (raw: ${raw})`, async ({ startClient }, testInfo) => {
+    const ext = raw ? 'png' : 'jpeg';
+    const outputDir = testInfo.outputPath('output');
+    const client = await startClient({
+      config: { outputDir },
+    });
+    expect(await client.callTool({
+      name: 'browser_navigate',
+      arguments: {
+        url: 'data:text/html,<html><title>Title</title><body>Hello, world!</body></html>',
+      },
+    })).toContainTextContent(`Navigate to data:text/html`);
 
-test('browser_take_screenshot (outputDir)', async ({ startClient, localOutputPath }) => {
-  const outputDir = localOutputPath('output');
+    expect(await client.callTool({
+      name: 'browser_take_screenshot',
+      arguments: {
+        raw,
+      },
+    })).toEqual({
+      content: [
+        {
+          data: expect.any(String),
+          mimeType: `image/${ext}`,
+          type: 'image',
+        },
+        {
+          text: expect.stringMatching(
+              new RegExp(`page-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}\\-\\d{3}Z\\.${ext}`)
+          ),
+          type: 'text',
+        },
+      ],
+    });
+
+    const files = [...fs.readdirSync(outputDir)];
+
+    expect(fs.existsSync(outputDir)).toBeTruthy();
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatch(
+        new RegExp(`^page-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z\\.${ext}$`)
+    );
+  });
+
+}
+
+test('browser_take_screenshot (filename: "output.jpeg")', async ({ startClient }, testInfo) => {
+  const outputDir = testInfo.outputPath('output');
   const client = await startClient({
     config: { outputDir },
   });
@@ -107,13 +152,30 @@ test('browser_take_screenshot (outputDir)', async ({ startClient, localOutputPat
     },
   })).toContainTextContent(`Navigate to data:text/html`);
 
-  await client.callTool({
+  expect(await client.callTool({
     name: 'browser_take_screenshot',
-    arguments: {},
+    arguments: {
+      filename: 'output.jpeg',
+    },
+  })).toEqual({
+    content: [
+      {
+        data: expect.any(String),
+        mimeType: 'image/jpeg',
+        type: 'image',
+      },
+      {
+        text: expect.stringContaining(`output.jpeg`),
+        type: 'text',
+      },
+    ],
   });
 
+  const files = [...fs.readdirSync(outputDir)];
+
   expect(fs.existsSync(outputDir)).toBeTruthy();
-  expect([...fs.readdirSync(outputDir)]).toHaveLength(1);
+  expect(files).toHaveLength(1);
+  expect(files[0]).toMatch(/^output.jpeg$/);
 });
 
 test('browser_take_screenshot (noImageResponses)', async ({ startClient }) => {
