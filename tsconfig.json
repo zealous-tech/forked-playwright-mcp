@@ -7,7 +7,6 @@
     "module": "NodeNext",
     "rootDir": "src",
     "outDir": "./lib",
-    "declaration": true,
     "resolveJsonModule": true
   },
   "include": [
