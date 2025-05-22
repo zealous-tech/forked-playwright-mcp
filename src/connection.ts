@@ -23,6 +23,7 @@ import { snapshotTools, visionTools } from './tools.js';
 
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { FullConfig } from './config.js';
+import { Tool } from './tools/tool.js';
 
 export async function createConnection(config: FullConfig): Promise<Connection> {
   const allTools = config.vision ? visionTools : snapshotTools;

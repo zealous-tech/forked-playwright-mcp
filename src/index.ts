@@ -18,6 +18,7 @@ import { Connection, createConnection as createConnectionImpl } from './connecti
 import { resolveConfig } from './config.js';
 
 import type { Config } from '../config.js';
+import { Tool } from './tools/tool.js';
 
 export async function createConnection(userConfig: Config = {}): Promise<Connection> {
   const config = await resolveConfig(userConfig);

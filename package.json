@@ -30,8 +30,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "types": "./index.d.ts",
-      "default": "./index.js"
+       "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
     }
   },
   "dependencies": {
