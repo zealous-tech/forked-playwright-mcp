@@ -94,11 +94,13 @@ export async function resolveCLIConfig(cliOptions: CLIOptions): Promise<FullConf
   // Derive artifact output directory from config.outputDir
   if (result.saveTrace)
     result.browser.launchOptions.tracesDir = path.join(result.outputDir, 'traces');
+  if (result.browser.browserName === 'chromium')
+    (result.browser.launchOptions as any).cdpPort = await findFreePort();
   return result;
 }
 
 export async function configFromCLIOptions(cliOptions: CLIOptions): Promise<Config> {
-  let browserName: 'chromium' | 'firefox' | 'webkit';
+  let browserName: 'chromium' | 'firefox' | 'webkit' | undefined;
   let channel: string | undefined;
   switch (cliOptions.browser) {
     case 'chrome':
@@ -119,9 +121,6 @@ export async function configFromCLIOptions(cliOptions: CLIOptions): Promise<Conf
     case 'webkit':
       browserName = 'webkit';
       break;
-    default:
-      browserName = 'chromium';
-      channel = 'chrome';
   }
 
   // Launch options
@@ -131,13 +130,9 @@ export async function configFromCLIOptions(cliOptions: CLIOptions): Promise<Conf
     headless: cliOptions.headless,
   };
 
-  if (browserName === 'chromium') {
-    (launchOptions as any).cdpPort = await findFreePort();
-    if (!cliOptions.sandbox) {
-      // --no-sandbox was passed, disable the sandbox
-      launchOptions.chromiumSandbox = false;
-    }
-  }
+  // --no-sandbox was passed, disable the sandbox
+  if (!cliOptions.sandbox)
+    launchOptions.chromiumSandbox = false;
 
   if (cliOptions.proxyServer) {
     launchOptions.proxy = {

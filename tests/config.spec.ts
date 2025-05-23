@@ -42,3 +42,22 @@ test('config user data dir', async ({ startClient, localOutputPath, server }) =>
   const files = await fs.promises.readdir(config.browser!.userDataDir!);
   expect(files.length).toBeGreaterThan(0);
 });
+
+test.describe(() => {
+  test.use({ mcpBrowser: '' });
+  test('browserName', { annotation: { type: 'issue', description: 'https://github.com/microsoft/playwright-mcp/issues/458' } }, async ({ startClient, localOutputPath }) => {
+    const config: Config = {
+      browser: {
+        browserName: 'firefox',
+      },
+    };
+    const configPath = localOutputPath('config.json');
+    await fs.promises.writeFile(configPath, JSON.stringify(config, null, 2));
+
+    const client = await startClient({ args: ['--config', configPath] });
+    expect(await client.callTool({
+      name: 'browser_navigate',
+      arguments: { url: 'data:text/html,<script>document.title = navigator.userAgent</script>' },
+    })).toContainTextContent(`Firefox`);
+  });
+});
