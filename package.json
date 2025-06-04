@@ -30,8 +30,7 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
+      "default": "./lib/server.js"
     }
   },
   "dependencies": {
@@ -60,3 +59,4 @@
     "mcp-server-playwright": "cli.js"
   }
 }
+
