@@ -18,22 +18,20 @@ import http from 'node:http';
 import assert from 'node:assert';
 import crypto from 'node:crypto';
 
+import debug from 'debug';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import { createConnection } from './connection.js';
+import type { Server } from './server.js';
 
-import type { Connection } from './connection.js';
-import type { FullConfig } from './config.js';
-
-export async function startStdioTransport(config: FullConfig, connectionList: Connection[]) {
-  const connection = await createConnection(config);
-  await connection.connect(new StdioServerTransport());
-  connectionList.push(connection);
+export async function startStdioTransport(server: Server) {
+  await server.createConnection(new StdioServerTransport());
 }
 
-async function handleSSE(config: FullConfig, req: http.IncomingMessage, res: http.ServerResponse, url: URL, sessions: Map<string, SSEServerTransport>, connectionList: Connection[]) {
+const testDebug = debug('pw:mcp:test');
+
+async function handleSSE(server: Server, req: http.IncomingMessage, res: http.ServerResponse, url: URL, sessions: Map<string, SSEServerTransport>) {
   if (req.method === 'POST') {
     const sessionId = url.searchParams.get('sessionId');
     if (!sessionId) {
@@ -51,15 +49,13 @@ async function handleSSE(config: FullConfig, req: http.IncomingMessage, res: htt
   } else if (req.method === 'GET') {
     const transport = new SSEServerTransport('/sse', res);
     sessions.set(transport.sessionId, transport);
-    const connection = await createConnection(config);
-    await connection.connect(transport);
-    connectionList.push(connection);
+    testDebug(`create SSE session: ${transport.sessionId}`);
+    const connection = await server.createConnection(transport);
     res.on('close', () => {
+      testDebug(`delete SSE session: ${transport.sessionId}`);
       sessions.delete(transport.sessionId);
-      connection.close().catch(e => {
-        // eslint-disable-next-line no-console
-        console.error(e);
-      });
+      // eslint-disable-next-line no-console
+      void connection.close().catch(e => console.error(e));
     });
     return;
   }
@@ -68,7 +64,7 @@ async function handleSSE(config: FullConfig, req: http.IncomingMessage, res: htt
   res.end('Method not allowed');
 }
 
-async function handleStreamable(config: FullConfig, req: http.IncomingMessage, res: http.ServerResponse, sessions: Map<string, StreamableHTTPServerTransport>, connectionList: Connection[]) {
+async function handleStreamable(server: Server, req: http.IncomingMessage, res: http.ServerResponse, sessions: Map<string, StreamableHTTPServerTransport>) {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   if (sessionId) {
     const transport = sessions.get(sessionId);
@@ -91,12 +87,8 @@ async function handleStreamable(config: FullConfig, req: http.IncomingMessage, r
       if (transport.sessionId)
         sessions.delete(transport.sessionId);
     };
-    const connection = await createConnection(config);
-    connectionList.push(connection);
-    await Promise.all([
-      connection.connect(transport),
-      transport.handleRequest(req, res),
-    ]);
+    await server.createConnection(transport);
+    await transport.handleRequest(req, res);
     return;
   }
 
@@ -104,17 +96,18 @@ async function handleStreamable(config: FullConfig, req: http.IncomingMessage, r
   res.end('Invalid request');
 }
 
-export function startHttpTransport(config: FullConfig, port: number, hostname: string | undefined, connectionList: Connection[]) {
+export function startHttpTransport(server: Server) {
   const sseSessions = new Map<string, SSEServerTransport>();
   const streamableSessions = new Map<string, StreamableHTTPServerTransport>();
   const httpServer = http.createServer(async (req, res) => {
     const url = new URL(`http://localhost${req.url}`);
     if (url.pathname.startsWith('/mcp'))
-      await handleStreamable(config, req, res, streamableSessions, connectionList);
+      await handleStreamable(server, req, res, streamableSessions);
     else
-      await handleSSE(config, req, res, url, sseSessions, connectionList);
+      await handleSSE(server, req, res, url, sseSessions);
   });
-  httpServer.listen(port, hostname, () => {
+  const { host, port } = server.config.server;
+  httpServer.listen(port, host, () => {
     const address = httpServer.address();
     assert(address, 'Could not bind server socket');
     let url: string;

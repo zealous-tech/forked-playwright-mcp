@@ -19,7 +19,7 @@ import fs from 'fs';
 import { test, expect } from './fixtures.js';
 
 test('save as pdf unavailable', async ({ startClient, server }) => {
-  const client = await startClient({ args: ['--caps="no-pdf"'] });
+  const { client } = await startClient({ args: ['--caps="no-pdf"'] });
   await client.callTool({
     name: 'browser_navigate',
     arguments: { url: server.HELLO_WORLD },
@@ -30,10 +30,9 @@ test('save as pdf unavailable', async ({ startClient, server }) => {
   })).toHaveTextContent(/Tool \"browser_pdf_save\" not found/);
 });
 
-test('save as pdf', async ({ startClient, mcpBrowser, server, localOutputPath }) => {
-  const outputDir = localOutputPath('output');
-  const client = await startClient({
-    config: { outputDir },
+test('save as pdf', async ({ startClient, mcpBrowser, server }, testInfo) => {
+  const { client } = await startClient({
+    config: { outputDir: testInfo.outputPath('output') },
   });
 
   test.skip(!!mcpBrowser && !['chromium', 'chrome', 'msedge'].includes(mcpBrowser), 'Save as PDF is only supported in Chromium.');
@@ -49,10 +48,10 @@ test('save as pdf', async ({ startClient, mcpBrowser, server, localOutputPath })
   expect(response).toHaveTextContent(/Save page as.*page-[^:]+.pdf/);
 });
 
-test('save as pdf (filename: output.pdf)', async ({ startClient, mcpBrowser, server, localOutputPath }) => {
+test('save as pdf (filename: output.pdf)', async ({ startClient, mcpBrowser, server }, testInfo) => {
+  const outputDir = testInfo.outputPath('output');
   test.skip(!!mcpBrowser && !['chromium', 'chrome', 'msedge'].includes(mcpBrowser), 'Save as PDF is only supported in Chromium.');
-  const outputDir = localOutputPath('output');
-  const client = await startClient({
+  const { client } = await startClient({
     config: { outputDir },
   });
 

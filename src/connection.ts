@@ -14,23 +14,25 @@
  * limitations under the License.
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { Server as McpServer } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, Tool as McpTool } from '@modelcontextprotocol/sdk/types.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import { Context, packageJSON } from './context.js';
+import { Context } from './context.js';
 import { snapshotTools, visionTools } from './tools.js';
+import { packageJSON } from './package.js';
 
-import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { FullConfig } from './config.js';
 import { Tool } from './tools/tool.js';
 
-export async function createConnection(config: FullConfig): Promise<Connection> {
+import type { BrowserContextFactory } from './browserContextFactory.js';
+
+export function createConnection(config: FullConfig, browserContextFactory: BrowserContextFactory): Connection {
   const allTools = config.vision ? visionTools : snapshotTools;
   const tools = allTools.filter(tool => !config.capabilities || tool.capability === 'core' || config.capabilities.includes(tool.capability));
 
-  const context = new Context(tools, config);
-  const server = new Server({ name: 'Playwright', version: packageJSON.version }, {
+  const context = new Context(tools, config, browserContextFactory);
+  const server = new McpServer({ name: 'Playwright', version: packageJSON.version }, {
     capabilities: {
       tools: {},
     }
@@ -75,26 +77,19 @@ export async function createConnection(config: FullConfig): Promise<Connection> 
     }
   });
 
-  const connection = new Connection(server, context);
-  return connection;
+  return new Connection(server, context);
 }
 
 export class Connection {
-  readonly server: Server;
+  readonly server: McpServer;
   readonly context: Context;
 
-  constructor(server: Server, context: Context) {
+  constructor(server: McpServer, context: Context) {
     this.server = server;
     this.context = context;
-  }
-
-  async connect(transport: Transport) {
-    await this.server.connect(transport);
-    await new Promise<void>(resolve => {
-      this.server.oninitialized = () => resolve();
-    });
-    if (this.server.getClientVersion()?.name.includes('cursor'))
-      this.context.config.noImageResponses = true;
+    this.server.oninitialized = () => {
+      this.context.clientVersion = this.server.getClientVersion();
+    };
   }
 
   async close() {

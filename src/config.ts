@@ -38,7 +38,7 @@ export type CLIOptions = {
   host?: string;
   ignoreHttpsErrors?: boolean;
   isolated?: boolean;
-  imageResponses: boolean;
+  imageResponses?: 'allow' | 'omit' | 'auto';
   sandbox: boolean;
   outputDir?: string;
   port?: number;
@@ -68,19 +68,21 @@ const defaultConfig: FullConfig = {
     allowedOrigins: undefined,
     blockedOrigins: undefined,
   },
+  server: {},
   outputDir: path.join(os.tmpdir(), 'playwright-mcp-output', sanitizeForFilePath(new Date().toISOString())),
 };
 
 type BrowserUserConfig = NonNullable<Config['browser']>;
 
 export type FullConfig = Config & {
-  browser: BrowserUserConfig & {
-    browserName: NonNullable<BrowserUserConfig['browserName']>;
+  browser: Omit<BrowserUserConfig, 'browserName'> & {
+    browserName: 'chromium' | 'firefox' | 'webkit';
     launchOptions: NonNullable<BrowserUserConfig['launchOptions']>;
     contextOptions: NonNullable<BrowserUserConfig['contextOptions']>;
   },
   network: NonNullable<Config['network']>,
   outputDir: string;
+  server: NonNullable<Config['server']>,
 };
 
 export async function resolveConfig(config: Config): Promise<FullConfig> {
@@ -94,11 +96,13 @@ export async function resolveCLIConfig(cliOptions: CLIOptions): Promise<FullConf
   // Derive artifact output directory from config.outputDir
   if (result.saveTrace)
     result.browser.launchOptions.tracesDir = path.join(result.outputDir, 'traces');
+  if (result.browser.browserName === 'chromium')
+    (result.browser.launchOptions as any).cdpPort = await findFreePort();
   return result;
 }
 
 export async function configFromCLIOptions(cliOptions: CLIOptions): Promise<Config> {
-  let browserName: 'chromium' | 'firefox' | 'webkit';
+  let browserName: 'chromium' | 'firefox' | 'webkit' | undefined;
   let channel: string | undefined;
   switch (cliOptions.browser) {
     case 'chrome':
@@ -119,9 +123,6 @@ export async function configFromCLIOptions(cliOptions: CLIOptions): Promise<Conf
     case 'webkit':
       browserName = 'webkit';
       break;
-    default:
-      browserName = 'chromium';
-      channel = 'chrome';
   }
 
   // Launch options
@@ -131,13 +132,9 @@ export async function configFromCLIOptions(cliOptions: CLIOptions): Promise<Conf
     headless: cliOptions.headless,
   };
 
-  if (browserName === 'chromium') {
-    (launchOptions as any).cdpPort = await findFreePort();
-    if (!cliOptions.sandbox) {
-      // --no-sandbox was passed, disable the sandbox
-      launchOptions.chromiumSandbox = false;
-    }
-  }
+  // --no-sandbox was passed, disable the sandbox
+  if (!cliOptions.sandbox)
+    launchOptions.chromiumSandbox = false;
 
   if (cliOptions.proxyServer) {
     launchOptions.proxy = {
@@ -193,12 +190,8 @@ export async function configFromCLIOptions(cliOptions: CLIOptions): Promise<Conf
     },
     saveTrace: cliOptions.saveTrace,
     outputDir: cliOptions.outputDir,
+    imageResponses: cliOptions.imageResponses,
   };
-
-  if (!cliOptions.imageResponses) {
-    // --no-image-responses was passed, disable image responses
-    result.noImageResponses = true;
-  }
 
   return result;
 }
@@ -265,6 +258,10 @@ function mergeConfig(base: FullConfig, overrides: Config): FullConfig {
     network: {
       ...pickDefined(base.network),
       ...pickDefined(overrides.network),
-    }
+    },
+    server: {
+      ...pickDefined(base.server),
+      ...pickDefined(overrides.server),
+    },
   } as FullConfig;
 }

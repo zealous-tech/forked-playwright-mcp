@@ -15,14 +15,13 @@
  */
 
 import { program } from 'commander';
-
-import { startHttpTransport, startStdioTransport } from './transport.js';
-import { resolveCLIConfig } from './config.js';
 // @ts-ignore
 import { startTraceViewerServer } from 'playwright-core/lib/server';
 
-import type { Connection } from './connection.js';
-import { packageJSON } from './context.js';
+import { startHttpTransport, startStdioTransport } from './transport.js';
+import { resolveCLIConfig } from './config.js';
+import { Server } from './server.js';
+import { packageJSON } from './package.js';
 
 program
     .version('Version ' + packageJSON.version)
@@ -40,7 +39,7 @@ program
     .option('--host <host>', 'host to bind server to. Default is localhost. Use 0.0.0.0 to bind to all interfaces.')
     .option('--ignore-https-errors', 'ignore https errors')
     .option('--isolated', 'keep the browser profile in memory, do not save it to disk.')
-    .option('--no-image-responses', 'do not send image responses to the client.')
+    .option('--image-responses <mode>', 'whether to send image responses to the client. Can be "allow", "omit", or "auto". Defaults to "auto", which sends images if the client can display them.')
     .option('--no-sandbox', 'disable the sandbox for all process types that are normally sandboxed.')
     .option('--output-dir <path>', 'path to the directory for output files.')
     .option('--port <port>', 'port to listen on for SSE transport.')
@@ -54,13 +53,13 @@ program
     .option('--vision', 'Run server that uses screenshots (Aria snapshots are used by default)')
     .action(async options => {
       const config = await resolveCLIConfig(options);
-      const connectionList: Connection[] = [];
-      setupExitWatchdog(connectionList);
+      const server = new Server(config);
+      server.setupExitWatchdog();
 
-      if (options.port)
-        startHttpTransport(config, +options.port, options.host, connectionList);
+      if (config.server.port !== undefined)
+        startHttpTransport(server);
       else
-        await startStdioTransport(config, connectionList);
+        await startStdioTransport(server);
 
       if (config.saveTrace) {
         const server = await startTraceViewerServer();
@@ -71,21 +70,8 @@ program
       }
     });
 
-function setupExitWatchdog(connectionList: Connection[]) {
-  const handleExit = async () => {
-    setTimeout(() => process.exit(0), 15000);
-    for (const connection of connectionList)
-      await connection.close();
-    process.exit(0);
-  };
-
-  process.stdin.on('close', handleExit);
-  process.on('SIGINT', handleExit);
-  process.on('SIGTERM', handleExit);
-}
-
 function semicolonSeparatedList(value: string): string[] {
   return value.split(';').map(v => v.trim());
 }
 
-program.parse(process.argv);
+void program.parseAsync(process.argv);
