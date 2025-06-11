@@ -83,11 +83,10 @@ export class Tab {
         || e.message.includes('Download is starting'); // firefox + webkit
       if (!mightBeDownload)
         throw e;
-
       // on chromium, the download event is fired *after* page.goto rejects, so we wait a lil bit
       const download = await Promise.race([
         downloadEvent,
-        new Promise(resolve => setTimeout(resolve, 500)),
+        new Promise(resolve => setTimeout(resolve, 1000)),
       ]);
       if (!download)
         throw e;
