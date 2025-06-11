@@ -14,7 +14,7 @@ const custom_browser_click_on_labeled_element = defineTool({
   schema: {
     name: 'custom_browser_click_on_labeled_element',
     title: 'Click',
-    description: 'Perform click on a web page',
+    description: 'Perform click on a specific label of the page',
     inputSchema: elementSchema,
     type: 'destructive',
   },
