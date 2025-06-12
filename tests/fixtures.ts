@@ -65,12 +65,14 @@ export const test = baseTest.extend<TestFixtures & TestOptions, WorkerFixtures>(
   },
 
   startClient: async ({ mcpHeadless, mcpBrowser, mcpMode }, use, testInfo) => {
-    const userDataDir = testInfo.outputPath('user-data-dir');
+    const userDataDir = mcpMode !== 'docker' ? testInfo.outputPath('user-data-dir') : undefined;
     const configDir = path.dirname(test.info().config.configFile!);
     let client: Client | undefined;
 
     await use(async options => {
-      const args = ['--user-data-dir', path.relative(configDir, userDataDir)];
+      const args: string[] = [];
+      if (userDataDir)
+        args.push('--user-data-dir', userDataDir);
       if (process.env.CI && process.platform === 'linux')
         args.push('--no-sandbox');
       if (mcpHeadless)
@@ -89,6 +91,8 @@ export const test = baseTest.extend<TestFixtures & TestOptions, WorkerFixtures>(
       const transport = createTransport(args, mcpMode);
       let stderr = '';
       transport.stderr?.on('data', data => {
+        if (process.env.PWMCP_DEBUG)
+          process.stderr.write(data);
         stderr += data.toString();
       });
       await client.connect(transport);
@@ -239,5 +243,5 @@ export const expect = baseExpect.extend({
 });
 
 export function formatOutput(output: string): string[] {
-  return output.split('\n').map(line => line.replace(/^pw:mcp:test /, '').replace(/test-results.*/, '').trim()).filter(Boolean);
+  return output.split('\n').map(line => line.replace(/^pw:mcp:test /, '').replace(/user data dir.*/, 'user data dir').trim()).filter(Boolean);
 }

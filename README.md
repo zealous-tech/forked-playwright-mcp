@@ -52,6 +52,12 @@ After installation, the Playwright MCP server will be available for use with you
 <details>
 <summary><b>Install in Cursor</b></summary>
 
+#### Click the button to install:
+
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=playwright&config=eyJjb21tYW5kIjoibnB4IEBwbGF5d3JpZ2h0L21jcEBsYXRlc3QifQ%3D%3D)
+
+#### Or install manually:
+
 Go to `Cursor Settings` -> `MCP` -> `Add new MCP Server`. Name to your liking, use `command` type with the command `npx @playwright/mcp`. You can also verify config or add command like arguments via clicking `Edit`.
 
 ```js
@@ -106,6 +112,27 @@ Follow the MCP install [guide](https://modelcontextprotocol.io/quickstart/user),
 ```
 </details>
 
+<details>
+<summary><b>Install in Qodo Gen</b></summary>
+
+Open [Qodo Gen](https://docs.qodo.ai/qodo-documentation/qodo-gen) chat panel in VSCode or IntelliJ → Connect more tools → + Add new MCP → Paste the following configuration:
+
+```js
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    }
+  }
+}
+```
+
+Click <code>Save</code>.
+</details>
+
 ### Configuration
 
 Playwright MCP server supports following arguments. They can be provided in the JSON configuration above, as a part of the `"args"` list:
@@ -124,6 +151,7 @@ Playwright MCP server supports following arguments. They can be provided in the 
   --block-service-workers      block service workers
   --browser <browser>          browser or chrome channel to use, possible
                                values: chrome, firefox, webkit, msedge.
+  --browser-agent <endpoint>   Use browser agent (experimental).
   --caps <caps>                comma-separated list of capabilities to enable,
                                possible values: tabs, pdf, history, wait, files,
                                install. Default is all.
@@ -354,7 +382,7 @@ http.createServer(async (req, res) => {
   // Creates a headless Playwright MCP server with SSE transport
   const connection = await createConnection({ browser: { launchOptions: { headless: true } } });
   const transport = new SSEServerTransport('/messages', res);
-  await connection.connect(transport);
+  await connection.sever.connect(transport);
 
   // ...
 });
