@@ -97,18 +97,29 @@ async function handleStreamable(server: Server, req: http.IncomingMessage, res: 
   res.end('Invalid request');
 }
 
-export async function startHttpTransport(server: Server): Promise<http.Server> {
+export async function startHttpServer(config: { host?: string, port?: number }): Promise<http.Server> {
+  const { host, port } = config;
+  const httpServer = http.createServer();
+  await new Promise<void>((resolve, reject) => {
+    httpServer.on('error', reject);
+    httpServer.listen(port, host, () => {
+      resolve();
+      httpServer.removeListener('error', reject);
+    });
+  });
+  return httpServer;
+}
+
+export function startHttpTransport(httpServer: http.Server, mcpServer: Server) {
   const sseSessions = new Map<string, SSEServerTransport>();
   const streamableSessions = new Map<string, StreamableHTTPServerTransport>();
-  const httpServer = http.createServer(async (req, res) => {
+  httpServer.on('request', async (req, res) => {
     const url = new URL(`http://localhost${req.url}`);
     if (url.pathname.startsWith('/mcp'))
-      await handleStreamable(server, req, res, streamableSessions);
+      await handleStreamable(mcpServer, req, res, streamableSessions);
     else
-      await handleSSE(server, req, res, url, sseSessions);
+      await handleSSE(mcpServer, req, res, url, sseSessions);
   });
-  const { host, port } = server.config.server;
-  await new Promise<void>(resolve => httpServer.listen(port, host, resolve));
   const url = httpAddressToString(httpServer.address());
   const message = [
     `Listening on ${url}`,
@@ -124,7 +135,6 @@ export async function startHttpTransport(server: Server): Promise<http.Server> {
   ].join('\n');
     // eslint-disable-next-line no-console
   console.error(message);
-  return httpServer;
 }
 
 export function httpAddressToString(address: string | AddressInfo | null): string {

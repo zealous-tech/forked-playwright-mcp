@@ -28,10 +28,14 @@ import { WebSocket, WebSocketServer } from 'ws';
 import http from 'node:http';
 import { EventEmitter } from 'node:events';
 import debug from 'debug';
+import { httpAddressToString } from './transport.js';
 
-const debugLogger = debug('pw-mcp:cdp-relay');
+const debugLogger = debug('pw:mcp:relay');
 
-export class CDPBridgeServer extends EventEmitter {
+const CDP_PATH = '/cdp';
+const EXTENSION_PATH = '/extension';
+
+export class CDPRelayServer extends EventEmitter {
   private _wss: WebSocketServer;
   private _playwrightSocket: WebSocket | null = null;
   private _extensionSocket: WebSocket | null = null;
@@ -39,9 +43,6 @@ export class CDPBridgeServer extends EventEmitter {
     targetInfo: any;
     sessionId: string;
   } | undefined;
-
-  public static readonly CDP_PATH = '/cdp';
-  public static readonly EXTENSION_PATH = '/extension';
 
   constructor(server: http.Server) {
     super();
@@ -59,9 +60,9 @@ export class CDPBridgeServer extends EventEmitter {
 
     debugLogger(`New connection to ${url.pathname}`);
 
-    if (url.pathname === CDPBridgeServer.CDP_PATH) {
+    if (url.pathname === CDP_PATH) {
       this._handlePlaywrightConnection(ws);
-    } else if (url.pathname === CDPBridgeServer.EXTENSION_PATH) {
+    } else if (url.pathname === EXTENSION_PATH) {
       this._handleExtensionConnection(ws);
     } else {
       debugLogger(`Invalid path: ${url.pathname}`);
@@ -287,16 +288,26 @@ export class CDPBridgeServer extends EventEmitter {
   }
 }
 
+export async function startCDPRelayServer(httpServer: http.Server) {
+  const wsAddress = httpAddressToString(httpServer.address()).replace(/^http/, 'ws');
+  const cdpRelayServer = new CDPRelayServer(httpServer);
+  process.on('exit', () => cdpRelayServer.stop());
+  // eslint-disable-next-line no-console
+  console.error(`CDP relay server started on ${wsAddress}${EXTENSION_PATH} - Connect to it using the browser extension.`);
+  const cdpEndpoint = `${wsAddress}${CDP_PATH}`;
+  return cdpEndpoint;
+}
+
 // CLI usage
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = parseInt(process.argv[2], 10) || 9223;
   const httpServer = http.createServer();
   await new Promise<void>(resolve => httpServer.listen(port, resolve));
-  const server = new CDPBridgeServer(httpServer);
+  const server = new CDPRelayServer(httpServer);
 
   console.error(`CDP Bridge Server listening on ws://localhost:${port}`);
-  console.error(`- Playwright MCP: ws://localhost:${port}${CDPBridgeServer.CDP_PATH}`);
-  console.error(`- Extension: ws://localhost:${port}${CDPBridgeServer.EXTENSION_PATH}`);
+  console.error(`- Playwright MCP: ws://localhost:${port}${CDP_PATH}`);
+  console.error(`- Extension: ws://localhost:${port}${EXTENSION_PATH}`);
 
   process.on('SIGINT', () => {
     debugLogger('\nShutting down bridge server...');

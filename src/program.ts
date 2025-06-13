@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-import type http from 'http';
 import { Option, program } from 'commander';
 // @ts-ignore
 import { startTraceViewerServer } from 'playwright-core/lib/server';
 
-import { httpAddressToString, startHttpTransport, startStdioTransport } from './transport.js';
+import { startHttpServer, startHttpTransport, startStdioTransport } from './transport.js';
 import { resolveCLIConfig } from './config.js';
 import { Server } from './server.js';
 import { packageJSON } from './package.js';
-import { CDPBridgeServer } from './cdp-relay.js';
+import { startCDPRelayServer } from './cdpRelay.js';
 
 program
     .version('Version ' + packageJSON.version)
@@ -57,12 +56,19 @@ program
     .addOption(new Option('--extension', 'Allow connecting to a running browser instance (Edge/Chrome only). Requires the \'Playwright MCP\' browser extension to be installed.').hideHelp())
     .action(async options => {
       const config = await resolveCLIConfig(options);
-      const server = new Server(config, { forceCdp: !!config.extension });
+      const httpServer = config.server.port !== undefined ? await startHttpServer(config.server) : undefined;
+      if (config.extension) {
+        if (!httpServer)
+          throw new Error('--port parameter is required for extension mode');
+        // Point CDP endpoint to the relay server.
+        config.browser.cdpEndpoint = await startCDPRelayServer(httpServer);
+      }
+
+      const server = new Server(config);
       server.setupExitWatchdog();
 
-      let httpServer: http.Server | undefined = undefined;
-      if (config.server.port !== undefined)
-        httpServer = await startHttpTransport(server);
+      if (httpServer)
+        await startHttpTransport(httpServer, server);
       else
         await startStdioTransport(server);
 
@@ -72,14 +78,6 @@ program
         const url = urlPrefix + '/trace/index.html?trace=' + config.browser.launchOptions.tracesDir + '/trace.json';
         // eslint-disable-next-line no-console
         console.error('\nTrace viewer listening on ' + url);
-      }
-      if (config.extension && httpServer) {
-        const wsAddress = httpAddressToString(httpServer.address()).replace(/^http/, 'ws');
-        config.browser.cdpEndpoint = `${wsAddress}${CDPBridgeServer.CDP_PATH}`;
-        const cdpRelayServer = new CDPBridgeServer(httpServer);
-        process.on('exit', () => cdpRelayServer.stop());
-        // eslint-disable-next-line no-console
-        console.error(`CDP relay server started on ${wsAddress}${CDPBridgeServer.EXTENSION_PATH} - Connect to it using the browser extension.`);
       }
     });
 

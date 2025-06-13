@@ -28,10 +28,10 @@ export class Server {
   private _browserConfig: FullConfig['browser'];
   private _contextFactory: BrowserContextFactory;
 
-  constructor(config: FullConfig, { forceCdp }: { forceCdp: boolean }) {
+  constructor(config: FullConfig) {
     this.config = config;
     this._browserConfig = config.browser;
-    this._contextFactory = contextFactory(this._browserConfig, { forceCdp });
+    this._contextFactory = contextFactory(this._browserConfig);
   }
 
   async createConnection(transport: Transport): Promise<Connection> {
