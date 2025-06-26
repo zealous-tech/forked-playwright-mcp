@@ -55,46 +55,46 @@ export const custom_click_on_available_section = defineTool({
 
   handle: async (context, params) => {
     const page = context.currentTabOrDie().page;
-    
+
     // Use locator() instead of querySelector()
     const mapElement = page.locator('.seatmap-viewer');
     // Use getAttribute() on the ElementHandle, not directly on locator
     const mapId = await mapElement.getAttribute('data-viewerid');
-  
+
     // Access the map object using the mapID from the window.DvmViewers
     const items = await page.evaluate((mapId) => {
-        // Add null check before using mapId
-        if (!mapId) {
-          throw new Error("Could not find data-viewerid attribute on seatmap-viewer element");
-        }
+      // Add null check before using mapId
+      if (!mapId) {
+        throw new Error("Could not find data-viewerid attribute on seatmap-viewer element");
+      }
       const map = (window as any).DvmViewers[mapId];
-      const nodes = map.getNodesByType("section").filter((item: { [x: string]: string; }) => 
+      const nodes = map.getNodesByType("section").filter((item: { [x: string]: string; }) =>
         item["state"] === "available" && item["tag"] === "none"
       );
       const nodeId = nodes[0].id;
-      
+
       const mapCoordinates = map.getContainer().getBoundingClientRect();
       const nodeCoordinates = map.getNodeById(nodeId).getBoundingClientRect();
-      
+
       const x = nodeCoordinates["x"] - mapCoordinates["x"] + nodeCoordinates["width"] / 2;
       const y = nodeCoordinates["y"] - mapCoordinates["y"] + nodeCoordinates["height"] / 2;
-      
+
       return { x, y, nodeId };
     }, mapId);
-  
+
     const xCoord = Math.floor(items.x);
     const yCoord = Math.floor(items.y);
-  
+
     // Click at the calculated coordinates
     const selector = ".seatmap-viewer .d2m-map-layer";
     const element = page.locator(selector);
     await element.click({ position: { x: xCoord, y: yCoord } });
-  
+
     const code = [
       `// Clicks on Available Section`,
       `Internal Code`
     ];
-  
+
     return {
       code,
       result: items.nodeId,
@@ -127,50 +127,47 @@ export const custom_get_computed_styles = defineTool({
   handle: async (context, params) => {
     const tab = context.currentTabOrDie();
     const locator = tab.snapshotOrDie().refLocator(params);
-    
+
     const code = [
       `// Get computed styles for ${params.element}`,
     ];
 
-    return {
-      code,
-      action: async () => {
-        // Get element info for context
-        const elementInfo = await locator.evaluate((element) => ({
-          tagName: element.tagName.toLowerCase(),
-          text: element.textContent?.slice(0, 100) || undefined,
-        }));
+    const styleObject = async () => {
+      // Get element info for context
+      // const elementInfo = await locator.evaluate((element) => ({
+      //   tagName: element.tagName.toLowerCase(),
+      //   text: element.textContent?.slice(0, 100) || undefined,
+      // }));
 
-        // Get computed styles
-        const styles = await locator.evaluate((element, propertyNames) => {
-          const computedStyles = window.getComputedStyle(element);
-          const styleObject: Record<string, string> = {};
+      // Get computed styles
+      const styles = await locator.evaluate((element, propertyNames) => {
+        const computedStyles = window.getComputedStyle(element);
+        const styleObject: Record<string, string> = {};
 
-          if (propertyNames && propertyNames.length > 0) {
-            // Get only specified properties
-            for (const property of propertyNames) {
-              const value = computedStyles.getPropertyValue(property);
-              if (value) {
-                styleObject[property] = value;
-              }
-            }
-          } else {
-            // Get all computed styles
-            for (let i = 0; i < computedStyles.length; i++) {
-              const property = computedStyles.item(i);
-              const value = computedStyles.getPropertyValue(property);
+        if (propertyNames && propertyNames.length > 0) {
+          // Get only specified properties
+          for (const property of propertyNames) {
+            const value = computedStyles.getPropertyValue(property);
+            if (value) {
               styleObject[property] = value;
             }
           }
+        } else {
+          // Get all computed styles
+          for (let i = 0; i < computedStyles.length; i++) {
+            const property = computedStyles.item(i);
+            const value = computedStyles.getPropertyValue(property);
+            styleObject[property] = value;
+          }
+        }
 
-          return styleObject;
-        }, params.propertyNames);
-        // return {
-        //   styles,
-        //   elementInfo,
-        //   propertyCount: Object.keys(styles).length,
-        // };
-      },
+        return styleObject;
+      }, params.propertyNames);
+
+    }
+    return {
+      code,
+      result: styleObject,
       captureSnapshot: false,
       waitForNetwork: false,
     };
