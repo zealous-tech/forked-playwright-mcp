@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from './tool.js';
+import { generateLocator } from './utils.js';
+
 
 
 
@@ -104,7 +106,80 @@ export const custom_click_on_available_section = defineTool({
 
 
 
+
+const elementStyleSchema = z.object({
+  element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
+  ref: z.string().describe('Exact target element reference from the page snapshot'),
+  propertyNames: z.array(z.string()).optional().describe('Specific CSS property names to retrieve. If not provided, all computed styles will be returned'),
+});
+
+
+
+export const custom_get_computed_styles = defineTool({
+  capability: 'core',
+  schema: {
+    name: 'browser_get_computed_styles',
+    title: 'Get Computed Styles',
+    description: 'Get all computed CSS styles from a UI element',
+    inputSchema: elementStyleSchema,
+    type: 'readOnly',
+  },
+  handle: async (context, params) => {
+    const tab = context.currentTabOrDie();
+    const locator = tab.snapshotOrDie().refLocator(params);
+    
+    const code = [
+      `// Get computed styles for ${params.element}`,
+    ];
+
+    return {
+      code,
+      action: async () => {
+        // Get element info for context
+        const elementInfo = await locator.evaluate((element) => ({
+          tagName: element.tagName.toLowerCase(),
+          text: element.textContent?.slice(0, 100) || undefined,
+        }));
+
+        // Get computed styles
+        const styles = await locator.evaluate((element, propertyNames) => {
+          const computedStyles = window.getComputedStyle(element);
+          const styleObject: Record<string, string> = {};
+
+          if (propertyNames && propertyNames.length > 0) {
+            // Get only specified properties
+            for (const property of propertyNames) {
+              const value = computedStyles.getPropertyValue(property);
+              if (value) {
+                styleObject[property] = value;
+              }
+            }
+          } else {
+            // Get all computed styles
+            for (let i = 0; i < computedStyles.length; i++) {
+              const property = computedStyles.item(i);
+              const value = computedStyles.getPropertyValue(property);
+              styleObject[property] = value;
+            }
+          }
+
+          return styleObject;
+        }, params.propertyNames);
+        // return {
+        //   styles,
+        //   elementInfo,
+        //   propertyCount: Object.keys(styles).length,
+        // };
+      },
+      captureSnapshot: false,
+      waitForNetwork: false,
+    };
+  },
+});
+
+
 export default [
   custom_click_on_available_section,
-  custom_browser_click_on_labeled_element
+  custom_browser_click_on_labeled_element,
+  custom_get_computed_styles
 ];
