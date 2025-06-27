@@ -115,69 +115,25 @@ const elementStyleSchema = z.object({
 
 
 
-export const custom_get_computed_styles = defineTool({
+
+
+const custom_get_computed_styles = defineTool({
   capability: 'core',
   schema: {
-    name: 'browser_get_computed_styles',
-    title: 'Get Computed Styles',
-    description: 'Get all computed CSS styles from a UI element',
-    inputSchema: elementStyleSchema,
+    name: 'custom_get_computed_styles',
+    title: 'Get console messages',
+    description: 'Returns all console messages',
+    inputSchema: z.object({}),
     type: 'readOnly',
   },
-  handle: async (context, params) => {
-    const tab = context.currentTabOrDie();
-
-    // const { ref, element } = elementStyleSchema.parse(params);
-    // const result = { ref, element };
-
-    // const locator = tab.snapshotOrDie().refLocator(result);
-
-    const code = [
-      `// Get computed styles for ${params.element}`,
-    ];
-
-    // const styleObject = async () => {
-    //   // Get element info for context
-    //   // const elementInfo = await locator.evaluate((element) => ({
-    //   //   tagName: element.tagName.toLowerCase(),
-    //   //   text: element.textContent?.slice(0, 100) || undefined,
-    //   // }));
-
-    //   // Get computed styles
-    //   const styles = await locator.evaluate((element, propertyNames) => {
-    //     const computedStyles = window.getComputedStyle(element);
-    //     let styleObject: Record<string, string> = {};
-    //     console.log("computedStyles   ::::: " , JSON.stringify(computedStyles))
-
-    //     if (propertyNames && propertyNames.length > 0) {
-    //       // Get only specified properties
-    //       for (const property of propertyNames) {
-    //         const value = computedStyles.getPropertyValue(property);
-    //         if (value) {
-    //           styleObject[property] = value;
-    //         }
-    //       }
-    //     } else {
-    //       // Get all computed styles
-    //       for (let i = 0; i < computedStyles.length; i++) {
-    //         const property = computedStyles.item(i);
-    //         const value = computedStyles.getPropertyValue(property);
-    //         styleObject[property] = value;
-    //       }
-    //     }
-
-    //     console.log("styleObjectstyleObjectstyleObjectstyleObject::::: " , JSON.stringify(styleObject))
-
-    //     return styleObject;
-    //   }, params.propertyNames);
-
-    //   return styles
-    // }
+  handle: async context => {
+    // const messages = context.currentTabOrDie().consoleMessages();
+    // const log = messages.map(message => `[${message.type().toUpperCase()}] ${message.text()}`).join('\n');
     return {
-      code,
+      code: [`// <internal code to get element styles>`],
       action: async () => {
         return {
-          content: [{ type: 'text', text: "MEEEEEEEEEE" }]
+          content: [{ type: 'text', text: "AAAAAAAAAAA" }]
         };
       },
       captureSnapshot: false,
@@ -185,6 +141,80 @@ export const custom_get_computed_styles = defineTool({
     };
   },
 });
+
+
+
+
+// export const custom_get_computed_styles = defineTool({
+//   capability: 'core',
+//   schema: {
+//     name: 'browser_get_computed_styles',
+//     title: 'Get Computed Styles',
+//     description: 'Get all computed CSS styles from a UI element',
+//     inputSchema: elementStyleSchema,
+//     type: 'readOnly',
+//   },
+//   handle: async (context, params) => {
+//     const tab = context.currentTabOrDie();
+
+//     // const { ref, element } = elementStyleSchema.parse(params);
+//     // const result = { ref, element };
+
+//     // const locator = tab.snapshotOrDie().refLocator(result);
+
+//     const code = [
+//       `// Get computed styles for ${params.element}`,
+//     ];
+
+//     // const styleObject = async () => {
+//     //   // Get element info for context
+//     //   // const elementInfo = await locator.evaluate((element) => ({
+//     //   //   tagName: element.tagName.toLowerCase(),
+//     //   //   text: element.textContent?.slice(0, 100) || undefined,
+//     //   // }));
+
+//     //   // Get computed styles
+//     //   const styles = await locator.evaluate((element, propertyNames) => {
+//     //     const computedStyles = window.getComputedStyle(element);
+//     //     let styleObject: Record<string, string> = {};
+//     //     console.log("computedStyles   ::::: " , JSON.stringify(computedStyles))
+
+//     //     if (propertyNames && propertyNames.length > 0) {
+//     //       // Get only specified properties
+//     //       for (const property of propertyNames) {
+//     //         const value = computedStyles.getPropertyValue(property);
+//     //         if (value) {
+//     //           styleObject[property] = value;
+//     //         }
+//     //       }
+//     //     } else {
+//     //       // Get all computed styles
+//     //       for (let i = 0; i < computedStyles.length; i++) {
+//     //         const property = computedStyles.item(i);
+//     //         const value = computedStyles.getPropertyValue(property);
+//     //         styleObject[property] = value;
+//     //       }
+//     //     }
+
+//     //     console.log("styleObjectstyleObjectstyleObjectstyleObject::::: " , JSON.stringify(styleObject))
+
+//     //     return styleObject;
+//     //   }, params.propertyNames);
+
+//     //   return styles
+//     // }
+//     return {
+//       code,
+//       action: async () => {
+//         return {
+//           content: [{ type: 'text', text: "MEEEEEEEEEE" }]
+//         };
+//       },
+//       captureSnapshot: false,
+//       waitForNetwork: false,
+//     };
+//   },
+// });
 
 
 export default [
