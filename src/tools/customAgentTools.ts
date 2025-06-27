@@ -169,7 +169,7 @@ const custom_get_computed_styles = defineTool({
       code: [`// <internal code to get element styles>`],
       action: async () => {
         return {
-          content: [{ type: 'text', text: JSON.stringify(styleObject) }]
+          content: [{ type: 'text', text: "AAAAAAA"}]
         };
       },
       captureSnapshot: false,
