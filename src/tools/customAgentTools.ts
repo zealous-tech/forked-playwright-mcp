@@ -126,51 +126,45 @@ const custom_get_computed_styles = defineTool({
   },
   handle: async (context, params) => {
   const tab = context.currentTabOrDie();
-      // const { ref, element } = elementStyleSchema.parse(params);
-      // const result = { ref, element };
+      const { ref, element } = elementStyleSchema.parse(params);
+      const result = { ref, element };
 
-      // const locator = tab.snapshotOrDie().refLocator(result);
-      // const code = [
-      //   `// Get computed styles for ${params.element}`,
-      // ];
+      const locator = tab.snapshotOrDie().refLocator(result);
+      const code = [
+        `// Get computed styles for ${params.element}`,
+      ];
 
-      // const styleObject = async () => {
-      //   // Get element info for context
-      //   // const elementInfo = await locator.evaluate((element) => ({
-      //   //   tagName: element.tagName.toLowerCase(),
-      //   //   text: element.textContent?.slice(0, 100) || undefined,
-      //   // }));
+      const styleObject = async () => {
+        // Get computed styles
+        const styles = await locator.evaluate((element, propertyNames) => {
+          const computedStyles = window.getComputedStyle(element);
+          let styleObject: Record<string, string> = {};
+          console.log("computedStyles   ::::: " , JSON.stringify(computedStyles))
 
-      //   // Get computed styles
-      //   const styles = await locator.evaluate((element, propertyNames) => {
-      //     const computedStyles = window.getComputedStyle(element);
-      //     let styleObject: Record<string, string> = {};
-      //     console.log("computedStyles   ::::: " , JSON.stringify(computedStyles))
+          if (propertyNames && propertyNames.length > 0) {
+            // Get only specified properties
+            for (const property of propertyNames) {
+              const value = computedStyles.getPropertyValue(property);
+              if (value) {
+                styleObject[property] = value;
+              }
+            }
+          } else {
+            // Get all computed styles
+            for (let i = 0; i < computedStyles.length; i++) {
+              const property = computedStyles.item(i);
+              const value = computedStyles.getPropertyValue(property);
+              styleObject[property] = value;
+            }
+          }
 
-      //     if (propertyNames && propertyNames.length > 0) {
-      //       // Get only specified properties
-      //       for (const property of propertyNames) {
-      //         const value = computedStyles.getPropertyValue(property);
-      //         if (value) {
-      //           styleObject[property] = value;
-      //         }
-      //       }
-      //     } else {
-      //       // Get all computed styles
-      //       for (let i = 0; i < computedStyles.length; i++) {
-      //         const property = computedStyles.item(i);
-      //         const value = computedStyles.getPropertyValue(property);
-      //         styleObject[property] = value;
-      //       }
-      //     }
+          console.log("styleObjectstyleObjectstyleObjectstyleObject::::: " , JSON.stringify(styleObject))
 
-      //     console.log("styleObjectstyleObjectstyleObjectstyleObject::::: " , JSON.stringify(styleObject))
+          return styleObject;
+        }, params.propertyNames);
 
-      //     return styleObject;
-      //   }, params.propertyNames);
-
-      //   return styles
-      // }
+        return styles
+      }
     return {
       code: [`// <internal code to get element styles>`],
       action: async () => {
