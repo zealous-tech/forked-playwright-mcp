@@ -126,7 +126,11 @@ export const custom_get_computed_styles = defineTool({
   },
   handle: async (context, params) => {
     const tab = context.currentTabOrDie();
-    const locator = tab.snapshotOrDie().refLocator(params);
+
+    const { ref, element } = elementStyleSchema.parse(params);
+    const result = { ref, element };
+
+    const locator = tab.snapshotOrDie().refLocator(result);
 
     const code = [
       `// Get computed styles for ${params.element}`,
