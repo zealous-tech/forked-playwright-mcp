@@ -138,15 +138,17 @@ const custom_get_computed_styles = defineTool({
       const computedStyle = window.getComputedStyle(element);
       const result: { [key: string]: string } = {};
 
+      console.log("propspropsprops:  ", props)
       if (props) {
         props.forEach(propName => {
           result[propName] = computedStyle[propName as any] || computedStyle.getPropertyValue(propName);
+          console.log("AAAAA: ", propName,   result[propName])
         });
       }
 
       return result;
     }, params.propertyNames);
-    
+
     console.log("AAAAAAAAAAAAAAAAAaa : ", computedStyles);
     return {
       code: [`// <internal code to get element styles>`],
