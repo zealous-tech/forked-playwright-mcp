@@ -177,7 +177,7 @@ export const custom_get_computed_styles = defineTool({
       code,
       action: async () => {
         return {
-          content: [{ type: 'text', text: JSON.stringify(styleObject) }]
+          content: [{ type: 'text', text: "MEEEEEEEEEE" }]
         };
       },
       captureSnapshot: false,
