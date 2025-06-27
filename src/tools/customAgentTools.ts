@@ -109,7 +109,8 @@ export const custom_click_on_available_section = defineTool({
 
 const elementStyleSchema = z.object({
   element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
-  ref: z.string().describe('Exact target element reference from the page snapshot')
+  ref: z.string().describe('Exact target element reference from the page snapshot'),
+  propertyNames: z.array(z.string()).optional().describe('Specific CSS property names to retrieve. If not provided, all computed styles will be returned'),
 });
 
 
@@ -126,10 +127,10 @@ export const custom_get_computed_styles = defineTool({
   handle: async (context, params) => {
     const tab = context.currentTabOrDie();
 
-    // const { ref, element } = elementStyleSchema.parse(params);
-    // const result = { ref, element };
+    const { ref, element } = elementStyleSchema.parse(params);
+    const result = { ref, element };
 
-    const locator = tab.snapshotOrDie().refLocator(params);
+    const locator = tab.snapshotOrDie().refLocator(result);
 
     const code = [
       `// Get computed styles for ${params.element}`,
@@ -170,6 +171,7 @@ export const custom_get_computed_styles = defineTool({
         return styleObject;
       }, params.propertyNames);
 
+      return styles
     }
     return {
       code,
