@@ -115,15 +115,13 @@ const elementStyleSchema = z.object({
 
 
 
-
-
 const custom_get_computed_styles = defineTool({
   capability: 'core',
   schema: {
     name: 'custom_get_computed_styles',
     title: 'Get console messages',
     description: 'Returns all console messages',
-    inputSchema: z.object({}),
+    inputSchema: elementStyleSchema,
     type: 'readOnly',
   },
   handle: async context => {
