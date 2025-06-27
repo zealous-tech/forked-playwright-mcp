@@ -147,6 +147,7 @@ export const custom_get_computed_styles = defineTool({
       const styles = await locator.evaluate((element, propertyNames) => {
         const computedStyles = window.getComputedStyle(element);
         const styleObject: Record<string, string> = {};
+        console.log("computedStyles   ::::: " , JSON.stringify(computedStyles))
 
         if (propertyNames && propertyNames.length > 0) {
           // Get only specified properties
@@ -164,6 +165,8 @@ export const custom_get_computed_styles = defineTool({
             styleObject[property] = value;
           }
         }
+
+        console.log("styleObjectstyleObjectstyleObjectstyleObject::::: " , JSON.stringify(styleObject))
 
         return styleObject;
       }, params.propertyNames);
