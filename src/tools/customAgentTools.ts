@@ -6,36 +6,36 @@ import { generateLocator } from './utils.js';
 
 
 
-const elementSchema = z.object({
-  element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
-  label: z.string().describe('Exact label name extracted from action'),
-});
+// const elementSchema = z.object({
+//   element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
+//   label: z.string().describe('Exact label name extracted from action'),
+// });
 
-const custom_browser_click_on_labeled_element = defineTool({
-  capability: 'core',
-  schema: {
-    name: 'custom_browser_click_on_labeled_element',
-    title: 'Click',
-    description: 'Perform click on a specific label of the page',
-    inputSchema: elementSchema,
-    type: 'destructive',
-  },
+// const custom_browser_click_on_labeled_element = defineTool({
+//   capability: 'core',
+//   schema: {
+//     name: 'custom_browser_click_on_labeled_element',
+//     title: 'Click',
+//     description: 'Perform click on a specific label of the page',
+//     inputSchema: elementSchema,
+//     type: 'destructive',
+//   },
 
-  handle: async (context, params) => {
-    const tab = context.currentTabOrDie();
-    const element = tab.page.locator(`[label='${params.label}']`);
-    const code = [
-      `// Click on ${params.element} having  ${params.label}`,
-    ];
+//   handle: async (context, params) => {
+//     const tab = context.currentTabOrDie();
+//     const element = tab.page.locator(`[label='${params.label}']`);
+//     const code = [
+//       `// Click on ${params.element} having  ${params.label}`,
+//     ];
 
-    return {
-      code,
-      action: () => element.click(),
-      captureSnapshot: true,
-      waitForNetwork: true,
-    };
-  },
-});
+//     return {
+//       code,
+//       action: () => element.click(),
+//       captureSnapshot: true,
+//       waitForNetwork: true,
+//     };
+//   },
+// });
 
 
 
@@ -115,12 +115,12 @@ const elementStyleSchema = z.object({
 
 
 
-const custom_get_computed_styles = defineTool({
+const get_computed_styles = defineTool({
   capability: 'core',
   schema: {
-    name: 'custom_get_computed_styles',
-    title: 'Get console messages',
-    description: 'Returns all console messages',
+    name: 'get_computed_styles',
+    title: 'Get computed styles of element',
+    description: 'Get computed styles of element',
     inputSchema: elementStyleSchema,
     type: 'readOnly',
   },
@@ -165,6 +165,5 @@ const custom_get_computed_styles = defineTool({
 
 export default [
   custom_click_on_available_section,
-  custom_browser_click_on_labeled_element,
-  custom_get_computed_styles
+  get_computed_styles
 ];
