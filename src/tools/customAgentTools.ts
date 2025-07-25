@@ -91,10 +91,12 @@ const get_computed_styles = defineTabTool({
     const result = { ref, element };
 
     let locator: playwright.Locator | undefined;
-    locator = tab.refLocator(result);
+    locator = await tab.refLocator(result);
     const code = [
       `// Get computed styles for ${params.element}`,
     ];
+
+    console.log("****************AAAAAAAAAAAAAAAAAAa : ", locator)
 
     await tab.waitForCompletion(async () => {
       const receiver = locator ?? tab.page as any;
