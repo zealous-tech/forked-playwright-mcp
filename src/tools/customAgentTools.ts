@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool, defineTabTool } from './tool.js';
 import { generateLocator } from './utils.js';
+import type * as playwright from 'playwright';
 
 /**
  * Get the title of the current page.
@@ -97,8 +98,6 @@ const get_computed_styles = defineTabTool({
 
     await tab.waitForCompletion(async () => {
       const receiver = locator ?? tab.page as any;
-      const result = await receiver._evaluateFunction(params.function);
-
       // Create the function that will be evaluated
       const getStylesFunction = (element: Element, props?: string[]) => {
         const computedStyle = window.getComputedStyle(element);
@@ -121,6 +120,6 @@ const get_computed_styles = defineTabTool({
 
 
 export default [
-  custom_click_on_available_section,
+  // custom_click_on_available_section,
   get_computed_styles
 ];
