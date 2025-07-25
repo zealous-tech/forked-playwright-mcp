@@ -99,7 +99,7 @@ const get_computed_styles = defineTabTool({
     console.log("****************AAAAAAAAAAAAAAAAAAa : ", locator)
 
     await tab.waitForCompletion(async () => {
-      const receiver = locator ?? tab.page as any;
+      // const receiver = locator ?? tab.page as any;
       // Create the function that will be evaluated
       const getStylesFunction = (element: Element, props?: string[]) => {
         const computedStyle = window.getComputedStyle(element);
@@ -112,7 +112,7 @@ const get_computed_styles = defineTabTool({
         return result;
       };
       response.addCode(`// <internal code to get element styles>`)
-      const computedStyles = await receiver._evaluateFunction(getStylesFunction, params.propertyNames);
+      const computedStyles = await locator._evaluateFunction(getStylesFunction, params.propertyNames);
       response.addResult(JSON.stringify(computedStyles, null, 2) || 'Coudln\'t get requested styles');
     });
   },
