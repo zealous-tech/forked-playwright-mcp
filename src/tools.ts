@@ -48,7 +48,7 @@ export const allTools: Tool<any>[] = [
   ...pdf,
   ...screenshot,
   ...snapshot,
-  ...customAgentTpackage.jsonools,
+  ...customAgentTools,
   ...tabs,
   ...wait,
 ];

@@ -1,49 +1,11 @@
 import { z } from 'zod';
-import { defineTool } from './tool.js';
+import { defineTool, defineTabTool } from './tool.js';
 import { generateLocator } from './utils.js';
-
-
-
-
-
-// const elementSchema = z.object({
-//   element: z.string().describe('Human-readable element description used to obtain permission to interact with the element'),
-//   label: z.string().describe('Exact label name extracted from action'),
-// });
-
-// const custom_browser_click_on_labeled_element = defineTool({
-//   capability: 'core',
-//   schema: {
-//     name: 'custom_browser_click_on_labeled_element',
-//     title: 'Click',
-//     description: 'Perform click on a specific label of the page',
-//     inputSchema: elementSchema,
-//     type: 'destructive',
-//   },
-
-//   handle: async (context, params) => {
-//     const tab = context.currentTabOrDie();
-//     const element = tab.page.locator(`[label='${params.label}']`);
-//     const code = [
-//       `// Click on ${params.element} having  ${params.label}`,
-//     ];
-
-//     return {
-//       code,
-//       action: () => element.click(),
-//       captureSnapshot: true,
-//       waitForNetwork: true,
-//     };
-//   },
-// });
-
-
-
 
 /**
  * Get the title of the current page.
  */
-export const custom_click_on_available_section = defineTool({
+export const custom_click_on_available_section = defineTabTool({
   capability: 'core',
   schema: {
     name: 'custom_click_on_available_section',
@@ -53,54 +15,51 @@ export const custom_click_on_available_section = defineTool({
     type: 'destructive',
   },
 
-  handle: async (context, params) => {
-    const page = context.currentTabOrDie().page;
-
+  handle: async (tab, params, response) => {
+    response.setIncludeSnapshot();
+    const page = tab.page
     // Use locator() instead of querySelector()
     const mapElement = page.locator('.seatmap-viewer');
     // Use getAttribute() on the ElementHandle, not directly on locator
-    const mapId = await mapElement.getAttribute('data-viewerid');
 
-    // Access the map object using the mapID from the window.DvmViewers
-    const items = await page.evaluate((mapId) => {
-      // Add null check before using mapId
-      if (!mapId) {
-        throw new Error("Could not find data-viewerid attribute on seatmap-viewer element");
-      }
-      const map = (window as any).DvmViewers[mapId];
-      const nodes = map.getNodesByType("section").filter((item: { [x: string]: string; }) =>
-        item["state"] === "available" && item["tag"] === "none"
-      );
-      const nodeId = nodes[0].id;
 
-      const mapCoordinates = map.getContainer().getBoundingClientRect();
-      const nodeCoordinates = map.getNodeById(nodeId).getBoundingClientRect();
+        await tab.waitForCompletion(async () => {
 
-      const x = nodeCoordinates["x"] - mapCoordinates["x"] + nodeCoordinates["width"] / 2;
-      const y = nodeCoordinates["y"] - mapCoordinates["y"] + nodeCoordinates["height"] / 2;
+          const mapId = await mapElement.getAttribute('data-viewerid');
 
-      return { x, y, nodeId };
-    }, mapId);
+          // Extract the function that will be evaluated
+          const getMapItemsFunction = (mapId: string) => {
+            // Add null check before using mapId
+            if (!mapId) {
+              throw new Error("Could not find data-viewerid attribute on seatmap-viewer element");
+            }
+            const map = (window as any).DvmViewers[mapId];
+            const nodes = map.getNodesByType("section").filter((item: { [x: string]: string; }) =>
+              item["state"] === "available" && item["tag"] === "none"
+            );
+            const nodeId = nodes[0].id;
 
-    const xCoord = Math.floor(items.x);
-    const yCoord = Math.floor(items.y);
+            const mapCoordinates = map.getContainer().getBoundingClientRect();
+            const nodeCoordinates = map.getNodeById(nodeId).getBoundingClientRect();
 
-    // Click at the calculated coordinates
-    const selector = ".seatmap-viewer .d2m-map-layer";
-    const element = page.locator(selector);
-    await element.click({ position: { x: xCoord, y: yCoord } });
+            const x = nodeCoordinates["x"] - mapCoordinates["x"] + nodeCoordinates["width"] / 2;
+            const y = nodeCoordinates["y"] - mapCoordinates["y"] + nodeCoordinates["height"] / 2;
 
-    const code = [
-      `// Clicks on Available Section`,
-      `Internal Code`
-    ];
+            return { x, y, nodeId };
+          };
 
-    return {
-      code,
-      result: items.nodeId,
-      captureSnapshot: false,
-      waitForNetwork: false,
-    };
+          const items = await page._evaluateFunction(getMapItemsFunction, mapId);
+
+          const xCoord = Math.floor(items.x);
+          const yCoord = Math.floor(items.y);
+
+          // Click at the calculated coordinates
+          const selector = ".seatmap-viewer .d2m-map-layer";
+          const element = page.locator(selector);
+          await element.click({ position: { x: xCoord, y: yCoord } });
+          response.addCode("// Clicks on Available Section")
+          response.addResult(items.nodeId)
+     });
   },
 });
 
@@ -115,7 +74,7 @@ const elementStyleSchema = z.object({
 
 
 
-const get_computed_styles = defineTool({
+const get_computed_styles = defineTabTool({
   capability: 'core',
   schema: {
     name: 'get_computed_styles',
@@ -124,39 +83,37 @@ const get_computed_styles = defineTool({
     inputSchema: elementStyleSchema,
     type: 'readOnly',
   },
-  handle: async (context, params) => {
-    const tab = context.currentTabOrDie();
+  handle: async (tab, params, response) => {
+    response.setIncludeSnapshot();
+
     const { ref, element } = elementStyleSchema.parse(params);
     const result = { ref, element };
 
-    const locator = tab.snapshotOrDie().refLocator(result);
+    let locator: playwright.Locator | undefined;
+    locator = tab.refLocator(result);
     const code = [
       `// Get computed styles for ${params.element}`,
     ];
 
-    const computedStyles = await locator.evaluate((element: Element, props?: string[]) => {
-      const computedStyle = window.getComputedStyle(element);
-      const result: { [key: string]: string } = {};
-      if (props) {
-        props.forEach(propName => {
-          result[propName] = computedStyle[propName as any] || computedStyle.getPropertyValue(propName);
-        });
-      }
+    await tab.waitForCompletion(async () => {
+      const receiver = locator ?? tab.page as any;
+      const result = await receiver._evaluateFunction(params.function);
 
-      return result;
-    }, params.propertyNames);
-
-    console.log("Requested Computed Styles : ", computedStyles);
-    return {
-      code: [`// <internal code to get element styles>`],
-      action: async () => {
-        return {
-          content: [{ type: 'text', text: JSON.stringify(computedStyles) }]
-        };
-      },
-      captureSnapshot: false,
-      waitForNetwork: false,
-    };
+      // Create the function that will be evaluated
+      const getStylesFunction = (element: Element, props?: string[]) => {
+        const computedStyle = window.getComputedStyle(element);
+        const result: { [key: string]: string } = {};
+        if (props) {
+          props.forEach(propName => {
+            result[propName] = computedStyle[propName as any] || computedStyle.getPropertyValue(propName);
+          });
+        }
+        return result;
+      };
+      response.addCode(`// <internal code to get element styles>`)
+      const computedStyles = await receiver._evaluateFunction(getStylesFunction, params.propertyNames);
+      response.addResult(JSON.stringify(computedStyles, null, 2) || 'Coudln\'t get requested styles');
+    });
   },
 });
 
