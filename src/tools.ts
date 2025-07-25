@@ -17,6 +17,7 @@
 import common from './tools/common.js';
 import console from './tools/console.js';
 import dialogs from './tools/dialogs.js';
+import evaluate from './tools/evaluate.js';
 import files from './tools/files.js';
 import install from './tools/install.js';
 import keyboard from './tools/keyboard.js';
@@ -26,43 +27,32 @@ import pdf from './tools/pdf.js';
 import snapshot from './tools/snapshot.js';
 import tabs from './tools/tabs.js';
 import screenshot from './tools/screenshot.js';
-import testing from './tools/testing.js';
-import vision from './tools/vision.js';
 import wait from './tools/wait.js';
 import customAgentTools from './tools/customAgentTools.js';
+import mouse from './tools/mouse.js';
 
 import type { Tool } from './tools/tool.js';
+import type { FullConfig } from './config.js';
 
-export const snapshotTools: Tool<any>[] = [
-  ...common(true),
+export const allTools: Tool<any>[] = [
+  ...common,
   ...console,
-  ...dialogs(true),
-  ...files(true),
+  ...dialogs,
+  ...evaluate,
+  ...files,
   ...install,
-  ...keyboard(true),
-  ...navigate(true),
+  ...keyboard,
+  ...navigate,
   ...network,
+  ...mouse,
   ...pdf,
   ...screenshot,
   ...snapshot,
-  ...tabs(true),
-  ...testing,
-  ...wait(true),
-  ...customAgentTools
+  ...customAgentTpackage.jsonools,
+  ...tabs,
+  ...wait,
 ];
 
-export const visionTools: Tool<any>[] = [
-  ...common(false),
-  ...console,
-  ...dialogs(false),
-  ...files(false),
-  ...install,
-  ...keyboard(false),
-  ...navigate(false),
-  ...network,
-  ...pdf,
-  ...tabs(false),
-  ...testing,
-  ...vision,
-  ...wait(false),
-];
+export function filteredTools(config: FullConfig) {
+  return allTools.filter(tool => tool.capability.startsWith('core') || config.capabilities?.includes(tool.capability));
+}

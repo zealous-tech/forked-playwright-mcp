@@ -18,7 +18,7 @@ import fs from 'fs';
 
 import { test, expect, formatOutput } from './fixtures.js';
 
-test('test reopen browser', async ({ startClient, server }) => {
+test('test reopen browser', async ({ startClient, server, mcpMode }) => {
   const { client, stderr } = await startClient();
   await client.callTool({
     name: 'browser_navigate',
@@ -27,12 +27,18 @@ test('test reopen browser', async ({ startClient, server }) => {
 
   expect(await client.callTool({
     name: 'browser_close',
-  })).toContainTextContent('No open pages available');
+  })).toContainTextContent(`### Ran Playwright code
+\`\`\`js
+await page.close()
+\`\`\`
+
+### No open tabs
+Use the "browser_navigate" tool to navigate to a page first.`);
 
   expect(await client.callTool({
     name: 'browser_navigate',
     arguments: { url: server.HELLO_WORLD },
-  })).toContainTextContent(`- generic [ref=e1]: Hello, world!`);
+  })).toContainTextContent(`- generic [active] [ref=e1]: Hello, world!`);
 
   await client.close();
 

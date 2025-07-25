@@ -26,6 +26,8 @@ import { TestServer } from './testserver/index.ts';
 
 import type { Config } from '../config';
 import type { BrowserContext } from 'playwright';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
+import type { Stream } from 'stream';
 
 export type TestOptions = {
   mcpBrowser: string | undefined;
@@ -39,7 +41,6 @@ type CDPServer = {
 
 type TestFixtures = {
   client: Client;
-  visionClient: Client;
   startClient: (options?: { clientName?: string, args?: string[], config?: Config }) => Promise<{ client: Client, stderr: () => string }>;
   wsEndpoint: string;
   cdpServer: CDPServer;
@@ -56,11 +57,6 @@ export const test = baseTest.extend<TestFixtures & TestOptions, WorkerFixtures>(
 
   client: async ({ startClient }, use) => {
     const { client } = await startClient();
-    await use(client);
-  },
-
-  visionClient: async ({ startClient }, use) => {
-    const { client } = await startClient({ args: ['--vision'] });
     await use(client);
   },
 
@@ -88,16 +84,16 @@ export const test = baseTest.extend<TestFixtures & TestOptions, WorkerFixtures>(
       }
 
       client = new Client({ name: options?.clientName ?? 'test', version: '1.0.0' });
-      const transport = createTransport(args, mcpMode);
-      let stderr = '';
-      transport.stderr?.on('data', data => {
+      const { transport, stderr } = await createTransport(args, mcpMode);
+      let stderrBuffer = '';
+      stderr?.on('data', data => {
         if (process.env.PWMCP_DEBUG)
           process.stderr.write(data);
-        stderr += data.toString();
+        stderrBuffer += data.toString();
       });
       await client.connect(transport);
       await client.ping();
-      return { client, stderr: () => stderr };
+      return { client, stderr: () => stderrBuffer };
     });
 
     await client?.close();
@@ -138,7 +134,7 @@ export const test = baseTest.extend<TestFixtures & TestOptions, WorkerFixtures>(
 
   mcpMode: [undefined, { option: true }],
 
-  _workerServers: [async ({}, use, workerInfo) => {
+  _workerServers: [async ({ }, use, workerInfo) => {
     const port = 8907 + workerInfo.workerIndex * 4;
     const server = await TestServer.create(port);
 
@@ -164,17 +160,25 @@ export const test = baseTest.extend<TestFixtures & TestOptions, WorkerFixtures>(
   },
 });
 
-function createTransport(args: string[], mcpMode: TestOptions['mcpMode']) {
+async function createTransport(args: string[], mcpMode: TestOptions['mcpMode']): Promise<{
+  transport: Transport,
+  stderr: Stream | null,
+}> {
   // NOTE: Can be removed when we drop Node.js 18 support and changed to import.meta.filename.
   const __filename = url.fileURLToPath(import.meta.url);
   if (mcpMode === 'docker') {
     const dockerArgs = ['run', '--rm', '-i', '--network=host', '-v', `${test.info().project.outputDir}:/app/test-results`];
-    return new StdioClientTransport({
+    const transport = new StdioClientTransport({
       command: 'docker',
       args: [...dockerArgs, 'playwright-mcp-dev:latest', ...args],
     });
+    return {
+      transport,
+      stderr: transport.stderr,
+    };
   }
-  return new StdioClientTransport({
+
+  const transport = new StdioClientTransport({
     command: 'node',
     args: [path.join(path.dirname(__filename), '../cli.js'), ...args],
     cwd: path.join(path.dirname(__filename), '..'),
@@ -186,6 +190,10 @@ function createTransport(args: string[], mcpMode: TestOptions['mcpMode']) {
       DEBUG_HIDE_DATE: '1',
     },
   });
+  return {
+    transport,
+    stderr: transport.stderr!,
+  };
 }
 
 type Response = Awaited<ReturnType<Client['callTool']>>;
@@ -218,17 +226,14 @@ export const expect = baseExpect.extend({
     };
   },
 
-  toContainTextContent(response: Response, content: string | string[]) {
+  toContainTextContent(response: Response, content: string) {
     const isNot = this.isNot;
     try {
-      content = Array.isArray(content) ? content : [content];
-      const texts = (response.content as any).map(c => c.text);
-      for (let i = 0; i < texts.length; i++) {
-        if (isNot)
-          expect(texts[i]).not.toContain(content[i]);
-        else
-          expect(texts[i]).toContain(content[i]);
-      }
+      const texts = (response.content as any).map(c => c.text).join('\n');
+      if (isNot)
+        expect(texts).not.toContain(content);
+      else
+        expect(texts).toContain(content);
     } catch (e) {
       return {
         pass: isNot,

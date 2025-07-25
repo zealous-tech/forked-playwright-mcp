@@ -14,23 +14,12 @@
  * limitations under the License.
  */
 
-import type { Context } from '../context.js';
+import debug from 'debug';
 
-export type ResourceSchema = {
-  uri: string;
-  name: string;
-  description?: string;
-  mimeType?: string;
-};
+const errorsDebug = debug('pw:mcp:errors');
 
-export type ResourceResult = {
-  uri: string;
-  mimeType?: string;
-  text?: string;
-  blob?: string;
-};
+export function logUnhandledError(error: unknown) {
+  errorsDebug(error);
+}
 
-export type Resource = {
-  schema: ResourceSchema;
-  read: (context: Context, uri: string) => Promise<ResourceResult[]>;
-};
+export const testDebug = debug('pw:mcp:test');

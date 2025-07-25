@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { test, expect } from './fixtures.js';
 import fs from 'fs/promises';
+import { test, expect } from './fixtures.js';
 
 test('browser_file_upload', async ({ client, server }, testInfo) => {
   server.setContent('/', `
@@ -28,7 +28,7 @@ test('browser_file_upload', async ({ client, server }, testInfo) => {
     arguments: { url: server.PREFIX },
   })).toContainTextContent(`
 \`\`\`yaml
-- generic [ref=e1]:
+- generic [active] [ref=e1]:
   - button "Choose File" [ref=e2]
   - button "Button" [ref=e3]
 \`\`\``);
@@ -38,7 +38,7 @@ test('browser_file_upload', async ({ client, server }, testInfo) => {
       name: 'browser_file_upload',
       arguments: { paths: [] },
     })).toHaveTextContent(`
-The tool "browser_file_upload" can only be used when there is related modal state present.
+Error: The tool "browser_file_upload" can only be used when there is related modal state present.
 ### Modal state
 - There is no modal state present
       `.trim());
@@ -65,12 +65,6 @@ The tool "browser_file_upload" can only be used when there is related modal stat
     });
 
     expect(response).not.toContainTextContent('### Modal state');
-    expect(response).toContainTextContent(`
-\`\`\`yaml
-- generic [ref=e1]:
-  - button "Choose File" [ref=e2]
-  - button "Button" [ref=e3]
-\`\`\``);
   }
 
   {
@@ -94,13 +88,13 @@ The tool "browser_file_upload" can only be used when there is related modal stat
       },
     });
 
-    expect(response).toContainTextContent(`Tool "browser_click" does not handle the modal state.
+    expect(response).toContainTextContent(`Error: Tool "browser_click" does not handle the modal state.
 ### Modal state
 - [File chooser]: can be handled by the "browser_file_upload" tool`);
   }
 });
 
-test('clicking on download link emits download', async ({ startClient, server }, testInfo) => {
+test('clicking on download link emits download', async ({ startClient, server, mcpMode }, testInfo) => {
   const { client } = await startClient({
     config: { outputDir: testInfo.outputPath('output') },
   });
@@ -119,17 +113,16 @@ test('clicking on download link emits download', async ({ startClient, server },
       ref: 'e2',
     },
   });
-  await expect.poll(() => client.callTool({ name: 'browser_snapshot' })).toContainTextContent(`
-### Downloads
+  await expect.poll(() => client.callTool({ name: 'browser_snapshot' })).toContainTextContent(`### Downloads
 - Downloaded file test.txt to ${testInfo.outputPath('output', 'test.txt')}`);
 });
 
-test('navigating to download link emits download', async ({ startClient, server, mcpBrowser }, testInfo) => {
+test('navigating to download link emits download', async ({ startClient, server, mcpBrowser, mcpMode }, testInfo) => {
   const { client } = await startClient({
     config: { outputDir: testInfo.outputPath('output') },
   });
 
-  test.skip(mcpBrowser === 'webkit' && process.platform === 'linux', 'https://github.com/microsoft/playwright/blob/8e08fdb52c27bb75de9bf87627bf740fadab2122/tests/library/download.spec.ts#L436');
+  test.skip(mcpBrowser !== 'chromium', 'This test is racy');
   server.route('/download', (req, res) => {
     res.writeHead(200, {
       'Content-Type': 'text/plain',

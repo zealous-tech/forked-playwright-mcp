@@ -32,13 +32,13 @@ test('browser_take_screenshot (viewport)', async ({ startClient, server }, testI
   })).toEqual({
     content: [
       {
+        text: expect.stringContaining(`Screenshot viewport and save it as`),
+        type: 'text',
+      },
+      {
         data: expect.any(String),
         mimeType: 'image/jpeg',
         type: 'image',
-      },
-      {
-        text: expect.stringContaining(`Screenshot viewport and save it as`),
-        type: 'text',
       },
     ],
   });
@@ -62,13 +62,13 @@ test('browser_take_screenshot (element)', async ({ startClient, server }, testIn
   })).toEqual({
     content: [
       {
+        text: expect.stringContaining(`page.getByText('Hello, world!').screenshot`),
+        type: 'text',
+      },
+      {
         data: expect.any(String),
         mimeType: 'image/jpeg',
         type: 'image',
-      },
-      {
-        text: expect.stringContaining(`page.getByText('Hello, world!').screenshot`),
-        type: 'text',
       },
     ],
   });
@@ -112,15 +112,15 @@ for (const raw of [undefined, true]) {
     })).toEqual({
       content: [
         {
-          data: expect.any(String),
-          mimeType: `image/${ext}`,
-          type: 'image',
-        },
-        {
           text: expect.stringMatching(
               new RegExp(`page-\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}\\-\\d{3}Z\\.${ext}`)
           ),
           type: 'text',
+        },
+        {
+          data: expect.any(String),
+          mimeType: `image/${ext}`,
+          type: 'image',
         },
       ],
     });
@@ -154,13 +154,13 @@ test('browser_take_screenshot (filename: "output.jpeg")', async ({ startClient, 
   })).toEqual({
     content: [
       {
+        text: expect.stringContaining(`output.jpeg`),
+        type: 'text',
+      },
+      {
         data: expect.any(String),
         mimeType: 'image/jpeg',
         type: 'image',
-      },
-      {
-        text: expect.stringContaining(`output.jpeg`),
-        type: 'text',
       },
     ],
   });
@@ -202,23 +202,66 @@ test('browser_take_screenshot (imageResponses=omit)', async ({ startClient, serv
   });
 });
 
-test('browser_take_screenshot (cursor)', async ({ startClient, server }, testInfo) => {
-  const outputDir = testInfo.outputPath('output');
-
+test('browser_take_screenshot (fullPage: true)', async ({ startClient, server }, testInfo) => {
   const { client } = await startClient({
-    clientName: 'cursor:vscode',
-    config: { outputDir },
+    config: { outputDir: testInfo.outputPath('output') },
   });
-
   expect(await client.callTool({
     name: 'browser_navigate',
     arguments: { url: server.HELLO_WORLD },
   })).toContainTextContent(`Navigate to http://localhost`);
 
-  await client.callTool({
+  expect(await client.callTool({
     name: 'browser_take_screenshot',
+    arguments: { fullPage: true },
+  })).toEqual({
+    content: [
+      {
+        text: expect.stringContaining(`Screenshot full page and save it as`),
+        type: 'text',
+      },
+      {
+        data: expect.any(String),
+        mimeType: 'image/jpeg',
+        type: 'image',
+      },
+    ],
+  });
+});
+
+test('browser_take_screenshot (fullPage with element should error)', async ({ startClient, server }, testInfo) => {
+  const { client } = await startClient({
+    config: { outputDir: testInfo.outputPath('output') },
+  });
+  expect(await client.callTool({
+    name: 'browser_navigate',
+    arguments: { url: server.HELLO_WORLD },
+  })).toContainTextContent(`[ref=e1]`);
+
+  const result = await client.callTool({
+    name: 'browser_take_screenshot',
+    arguments: {
+      fullPage: true,
+      element: 'hello button',
+      ref: 'e1',
+    },
   });
 
+  expect(result.isError).toBe(true);
+  expect(result.content?.[0]?.text).toContain('fullPage cannot be used with element screenshots');
+});
+
+test('browser_take_screenshot (viewport without snapshot)', async ({ startClient, server }, testInfo) => {
+  const { client } = await startClient({
+    config: { outputDir: testInfo.outputPath('output') },
+  });
+
+  // Ensure we have a tab but don't navigate anywhere (no snapshot captured)
+  expect(await client.callTool({
+    name: 'browser_tab_list',
+  })).toContainTextContent('about:blank');
+
+  // This should work without requiring a snapshot since it's a viewport screenshot
   expect(await client.callTool({
     name: 'browser_take_screenshot',
   })).toEqual({
@@ -226,6 +269,11 @@ test('browser_take_screenshot (cursor)', async ({ startClient, server }, testInf
       {
         text: expect.stringContaining(`Screenshot viewport and save it as`),
         type: 'text',
+      },
+      {
+        data: expect.any(String),
+        mimeType: 'image/jpeg',
+        type: 'image',
       },
     ],
   });

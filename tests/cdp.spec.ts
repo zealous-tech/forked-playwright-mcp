@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+import url from 'node:url';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { test, expect } from './fixtures.js';
 
 test('cdp server', async ({ cdpServer, startClient, server }) => {
@@ -22,7 +25,7 @@ test('cdp server', async ({ cdpServer, startClient, server }) => {
   expect(await client.callTool({
     name: 'browser_navigate',
     arguments: { url: server.HELLO_WORLD },
-  })).toContainTextContent(`- generic [ref=e1]: Hello, world!`);
+  })).toContainTextContent(`- generic [active] [ref=e1]: Hello, world!`);
 });
 
 test('cdp server reuse tab', async ({ cdpServer, startClient, server }) => {
@@ -38,21 +41,16 @@ test('cdp server reuse tab', async ({ cdpServer, startClient, server }) => {
       element: 'Hello, world!',
       ref: 'f0',
     },
-  })).toHaveTextContent(`Error: No current snapshot available. Capture a snapshot or navigate to a new location first.`);
+  })).toHaveTextContent(`Error: No open pages available. Use the \"browser_navigate\" tool to navigate to a page first.`);
 
   expect(await client.callTool({
     name: 'browser_snapshot',
-  })).toHaveTextContent(`
-- Ran Playwright code:
-\`\`\`js
-// <internal code to capture accessibility snapshot>
-\`\`\`
-
+  })).toHaveTextContent(`### Page state
 - Page URL: ${server.HELLO_WORLD}
 - Page Title: Title
-- Page Snapshot
+- Page Snapshot:
 \`\`\`yaml
-- generic [ref=e1]: Hello, world!
+- generic [active] [ref=e1]: Hello, world!
 \`\`\`
 `);
 });
@@ -73,5 +71,17 @@ test('should throw connection error and allow re-connecting', async ({ cdpServer
   expect(await client.callTool({
     name: 'browser_navigate',
     arguments: { url: server.PREFIX },
-  })).toContainTextContent(`- generic [ref=e1]: Hello, world!`);
+  })).toContainTextContent(`- generic [active] [ref=e1]: Hello, world!`);
+});
+
+// NOTE: Can be removed when we drop Node.js 18 support and changed to import.meta.filename.
+const __filename = url.fileURLToPath(import.meta.url);
+
+test('does not support --device', async () => {
+  const result = spawnSync('node', [
+    path.join(__filename, '../../cli.js'), '--device=Pixel 5', '--cdp-endpoint=http://localhost:1234',
+  ]);
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(1);
+  expect(result.stderr.toString()).toContain('Device emulation is not supported with cdpEndpoint.');
 });

@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-import { program } from 'commander';
+import { program, Option } from 'commander';
 // @ts-ignore
 import { startTraceViewerServer } from 'playwright-core/lib/server';
 
-import { startHttpTransport, startStdioTransport } from './transport.js';
-import { resolveCLIConfig } from './config.js';
-import { Server } from './server.js';
+import * as mcpTransport from './mcp/transport.js';
+import { commaSeparatedList, resolveCLIConfig, semicolonSeparatedList } from './config.js';
 import { packageJSON } from './package.js';
+import { runWithExtension } from './extension/main.js';
+import { BrowserServerBackend } from './browserServerBackend.js';
+import { Context } from './context.js';
+import { contextFactory } from './browserContextFactory.js';
+import { runLoopTools } from './loopTools/main.js';
 
 program
     .version('Version ' + packageJSON.version)
@@ -30,8 +34,7 @@ program
     .option('--blocked-origins <origins>', 'semicolon-separated list of origins to block the browser from requesting. Blocklist is evaluated before allowlist. If used without the allowlist, requests not matching the blocklist are still allowed.', semicolonSeparatedList)
     .option('--block-service-workers', 'block service workers')
     .option('--browser <browser>', 'browser or chrome channel to use, possible values: chrome, firefox, webkit, msedge.')
-    .option('--browser-agent <endpoint>', 'Use browser agent (experimental).')
-    .option('--caps <caps>', 'comma-separated list of capabilities to enable, possible values: tabs, pdf, history, wait, files, install. Default is all.')
+    .option('--caps <caps>', 'comma-separated list of additional capabilities to enable, possible values: vision, pdf.', commaSeparatedList)
     .option('--cdp-endpoint <endpoint>', 'CDP endpoint to connect to.')
     .option('--config <path>', 'path to the configuration file.')
     .option('--device <device>', 'device to emulate, for example: "iPhone 15"')
@@ -40,27 +43,43 @@ program
     .option('--host <host>', 'host to bind server to. Default is localhost. Use 0.0.0.0 to bind to all interfaces.')
     .option('--ignore-https-errors', 'ignore https errors')
     .option('--isolated', 'keep the browser profile in memory, do not save it to disk.')
-    .option('--image-responses <mode>', 'whether to send image responses to the client. Can be "allow", "omit", or "auto". Defaults to "auto", which sends images if the client can display them.')
+    .option('--image-responses <mode>', 'whether to send image responses to the client. Can be "allow" or "omit", Defaults to "allow".')
     .option('--no-sandbox', 'disable the sandbox for all process types that are normally sandboxed.')
     .option('--output-dir <path>', 'path to the directory for output files.')
     .option('--port <port>', 'port to listen on for SSE transport.')
     .option('--proxy-bypass <bypass>', 'comma-separated domains to bypass proxy, for example ".com,chromium.org,.domain.com"')
     .option('--proxy-server <proxy>', 'specify proxy server, for example "http://myproxy:3128" or "socks5://myproxy:8080"')
+    .option('--save-session', 'Whether to save the Playwright MCP session into the output directory.')
     .option('--save-trace', 'Whether to save the Playwright Trace of the session into the output directory.')
     .option('--storage-state <path>', 'path to the storage state file for isolated sessions.')
     .option('--user-agent <ua string>', 'specify user agent string')
     .option('--user-data-dir <path>', 'path to the user data directory. If not specified, a temporary directory will be created.')
     .option('--viewport-size <size>', 'specify browser viewport size in pixels, for example "1280, 720"')
-    .option('--vision', 'Run server that uses screenshots (Aria snapshots are used by default)')
+    .addOption(new Option('--extension', 'Connect to a running browser instance (Edge/Chrome only). Requires the "Playwright MCP Bridge" browser extension to be installed.').hideHelp())
+    .addOption(new Option('--loop-tools', 'Run loop tools').hideHelp())
+    .addOption(new Option('--vision', 'Legacy option, use --caps=vision instead').hideHelp())
     .action(async options => {
-      const config = await resolveCLIConfig(options);
-      const server = new Server(config);
-      server.setupExitWatchdog();
+      const abortController = setupExitWatchdog();
 
-      if (config.server.port !== undefined)
-        startHttpTransport(server);
-      else
-        await startStdioTransport(server);
+      if (options.vision) {
+        // eslint-disable-next-line no-console
+        console.error('The --vision option is deprecated, use --caps=vision instead');
+        options.caps = 'vision';
+      }
+      const config = await resolveCLIConfig(options);
+
+      if (options.extension) {
+        await runWithExtension(config, abortController);
+        return;
+      }
+      if (options.loopTools) {
+        await runLoopTools(config);
+        return;
+      }
+
+      const browserContextFactory = contextFactory(config.browser);
+      const serverBackendFactory = () => new BrowserServerBackend(config, browserContextFactory);
+      await mcpTransport.start(serverBackendFactory, config.server);
 
       if (config.saveTrace) {
         const server = await startTraceViewerServer();
@@ -71,8 +90,25 @@ program
       }
     });
 
-function semicolonSeparatedList(value: string): string[] {
-  return value.split(';').map(v => v.trim());
+function setupExitWatchdog() {
+  const abortController = new AbortController();
+
+  let isExiting = false;
+  const handleExit = async () => {
+    if (isExiting)
+      return;
+    isExiting = true;
+    setTimeout(() => process.exit(0), 15000);
+    abortController.abort('Process exiting');
+    await Context.disposeAll();
+    process.exit(0);
+  };
+
+  process.stdin.on('close', handleExit);
+  process.on('SIGINT', handleExit);
+  process.on('SIGTERM', handleExit);
+
+  return abortController;
 }
 
 void program.parseAsync(process.argv);

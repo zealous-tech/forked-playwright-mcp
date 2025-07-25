@@ -16,7 +16,7 @@
 
 import { test, expect } from './fixtures.js';
 
-test('--device should work', async ({ startClient, server }) => {
+test('--device should work', async ({ startClient, server, mcpMode }) => {
   const { client } = await startClient({
     args: ['--device', 'iPhone 15'],
   });

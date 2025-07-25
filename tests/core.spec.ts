@@ -21,53 +21,21 @@ test('browser_navigate', async ({ client, server }) => {
     name: 'browser_navigate',
     arguments: { url: server.HELLO_WORLD },
   })).toHaveTextContent(`
-- Ran Playwright code:
+### Ran Playwright code
 \`\`\`js
 // Navigate to ${server.HELLO_WORLD}
 await page.goto('${server.HELLO_WORLD}');
 \`\`\`
 
+### Page state
 - Page URL: ${server.HELLO_WORLD}
 - Page Title: Title
-- Page Snapshot
+- Page Snapshot:
 \`\`\`yaml
-- generic [ref=e1]: Hello, world!
+- generic [active] [ref=e1]: Hello, world!
 \`\`\`
 `
   );
-});
-
-test('browser_click', async ({ client, server }) => {
-  server.setContent('/', `
-    <title>Title</title>
-    <button>Submit</button>
-  `, 'text/html');
-
-  await client.callTool({
-    name: 'browser_navigate',
-    arguments: { url: server.PREFIX },
-  });
-
-  expect(await client.callTool({
-    name: 'browser_click',
-    arguments: {
-      element: 'Submit button',
-      ref: 'e2',
-    },
-  })).toHaveTextContent(`
-- Ran Playwright code:
-\`\`\`js
-// Click Submit button
-await page.getByRole('button', { name: 'Submit' }).click();
-\`\`\`
-
-- Page URL: ${server.PREFIX}
-- Page Title: Title
-- Page Snapshot
-\`\`\`yaml
-- button "Submit" [ref=e2]
-\`\`\`
-`);
 });
 
 test('browser_select_option', async ({ client, server }) => {
@@ -92,15 +60,16 @@ test('browser_select_option', async ({ client, server }) => {
       values: ['bar'],
     },
   })).toHaveTextContent(`
-- Ran Playwright code:
+### Ran Playwright code
 \`\`\`js
 // Select options [bar] in Select
 await page.getByRole('combobox').selectOption(['bar']);
 \`\`\`
 
+### Page state
 - Page URL: ${server.PREFIX}
 - Page Title: Title
-- Page Snapshot
+- Page Snapshot:
 \`\`\`yaml
 - combobox [ref=e2]:
   - option "Foo"
@@ -132,15 +101,16 @@ test('browser_select_option (multiple)', async ({ client, server }) => {
       values: ['bar', 'baz'],
     },
   })).toHaveTextContent(`
-- Ran Playwright code:
+### Ran Playwright code
 \`\`\`js
 // Select options [bar, baz] in Select
 await page.getByRole('listbox').selectOption(['bar', 'baz']);
 \`\`\`
 
+### Page state
 - Page URL: ${server.PREFIX}
 - Page Title: Title
-- Page Snapshot
+- Page Snapshot:
 \`\`\`yaml
 - listbox [ref=e2]:
   - option "Foo" [ref=e3]
@@ -175,7 +145,7 @@ test('browser_type', async ({ client, server }) => {
   });
   expect(await client.callTool({
     name: 'browser_console_messages',
-  })).toHaveTextContent('[LOG] Key pressed: Enter , Text: Hi!');
+  })).toHaveTextContent(/\[LOG\] Key pressed: Enter , Text: Hi!/);
 });
 
 test('browser_type (slowly)', async ({ client, server }) => {
@@ -199,14 +169,13 @@ test('browser_type (slowly)', async ({ client, server }) => {
       slowly: true,
     },
   });
-  expect(await client.callTool({
+  const response = await client.callTool({
     name: 'browser_console_messages',
-  })).toHaveTextContent([
-    '[LOG] Key pressed: H Text: ',
-    '[LOG] Key pressed: i Text: H',
-    '[LOG] Key pressed: ! Text: Hi',
-    '[LOG] Key pressed: Enter Text: Hi!',
-  ].join('\n'));
+  });
+  expect(response).toHaveTextContent(/\[LOG\] Key pressed: H Text: /);
+  expect(response).toHaveTextContent(/\[LOG\] Key pressed: i Text: H/);
+  expect(response).toHaveTextContent(/\[LOG\] Key pressed: ! Text: Hi/);
+  expect(response).toHaveTextContent(/\[LOG\] Key pressed: Enter Text: Hi!/);
 });
 
 test('browser_resize', async ({ client, server }) => {
@@ -230,10 +199,67 @@ test('browser_resize', async ({ client, server }) => {
       height: 780,
     },
   });
-  expect(response).toContainTextContent(`- Ran Playwright code:
+  expect(response).toContainTextContent(`### Ran Playwright code
 \`\`\`js
 // Resize browser window to 390x780
 await page.setViewportSize({ width: 390, height: 780 });
 \`\`\``);
   await expect.poll(() => client.callTool({ name: 'browser_snapshot' })).toContainTextContent('Window size: 390x780');
+});
+
+test('old locator error message', async ({ client, server }) => {
+  server.setContent('/', `
+    <button>Button 1</button>
+    <button>Button 2</button>
+    <script>
+      document.querySelector('button').addEventListener('click', () => {
+        document.querySelectorAll('button')[1].remove();
+      });
+    </script>
+  `, 'text/html');
+
+  expect(await client.callTool({
+    name: 'browser_navigate',
+    arguments: {
+      url: server.PREFIX,
+    },
+  })).toContainTextContent(`
+  - button "Button 1" [ref=e2]
+  - button "Button 2" [ref=e3]
+  `.trim());
+
+  await client.callTool({
+    name: 'browser_click',
+    arguments: {
+      element: 'Button 1',
+      ref: 'e2',
+    },
+  });
+
+  expect(await client.callTool({
+    name: 'browser_click',
+    arguments: {
+      element: 'Button 2',
+      ref: 'e3',
+    },
+  })).toContainTextContent('Ref e3 not found in the current page snapshot. Try capturing new snapshot.');
+});
+
+test('visibility: hidden > visible should be shown', { annotation: { type: 'issue', description: 'https://github.com/microsoft/playwright-mcp/issues/535' } }, async ({ client, server }) => {
+  server.setContent('/', `
+    <div style="visibility: hidden;">
+      <div style="visibility: visible;">
+        <button>Button</button>
+      </div>
+    </div>
+  `, 'text/html');
+
+  await client.callTool({
+    name: 'browser_navigate',
+    arguments: { url: server.PREFIX },
+  });
+
+  expect(await client.callTool({
+    name: 'browser_snapshot'
+  })).toContainTextContent('- button "Button"');
 });
