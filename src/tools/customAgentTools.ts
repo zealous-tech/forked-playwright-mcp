@@ -112,7 +112,7 @@ const get_computed_styles = defineTabTool({
         return result;
       };
       response.addCode(`// <internal code to get element styles>`)
-      const computedStyles = await locator._evaluateFunction(getStylesFunction, params.propertyNames);
+      const computedStyles = await locator.evaluate(getStylesFunction, params.propertyNames);
       response.addResult(JSON.stringify(computedStyles, null, 2) || 'Coudln\'t get requested styles');
     });
   },
