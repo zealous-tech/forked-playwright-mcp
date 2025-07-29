@@ -62,7 +62,6 @@ const click = defineTabTool({
     const locator = await tab.refLocator(params);
     const button = params.button;
     const buttonAttr = button ? `{ button: '${button}' }` : '';
-
     if (params.doubleClick) {
       response.addCode(`// Double click ${params.element}`);
       response.addCode(`await page.${await generateLocator(locator)}.dblclick(${buttonAttr});`);

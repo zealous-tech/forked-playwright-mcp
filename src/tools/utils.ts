@@ -84,7 +84,7 @@ export async function generateLocator(locator: playwright.Locator): Promise<stri
     const { resolvedSelector } = await (locator as any)._resolveSelector();
     return asLocator('javascript', resolvedSelector);
   } catch (e) {
-    throw new Error('Ref not found, likely because element was removed. Use browser_snapshot to see what elements are currently on the page.');
+    return 'Error: Ref not found, likely because element was removed. Use browser_snapshot to see what elements are currently on the page.';
   }
 }
 
