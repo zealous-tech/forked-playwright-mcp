@@ -1,6 +1,6 @@
 {
   "name": "@playwright/mcp",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "description": "Playwright Tools for MCP",
   "type": "module",
   "repository": {
@@ -17,18 +17,16 @@
   "license": "Apache-2.0",
   "scripts": {
     "build": "tsc",
-    "build:extension": "tsc --project extension",
     "lint": "npm run update-readme && eslint . && tsc --noEmit",
     "lint-fix": "eslint . --fix",
     "update-readme": "node utils/update-readme.js",
     "watch": "tsc --watch",
-    "watch:extension": "tsc --watch --project extension",
     "test": "playwright test",
     "ctest": "playwright test --project=chrome",
     "ftest": "playwright test --project=firefox",
     "wtest": "playwright test --project=webkit",
     "run-server": "node lib/browserServer.js",
-    "clean": "rm -rf lib extension/lib",
+    "clean": "rm -rf lib",
     "npm-publish": "npm run clean && npm run build && npm run test && npm publish"
   },
   "exports": {
@@ -55,13 +53,13 @@
     "@eslint/js": "^9.19.0",
     "@playwright/test": "1.54.1",
     "@stylistic/eslint-plugin": "^3.0.1",
-    "@types/chrome": "^0.0.315",
     "@types/debug": "^4.1.12",
     "@types/node": "^22.13.10",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.26.1",
     "@typescript-eslint/parser": "^8.26.1",
     "@typescript-eslint/utils": "^8.26.1",
+    "esbuild": "^0.20.1",
     "eslint": "^9.19.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-notice": "^1.0.0",
