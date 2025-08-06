@@ -64,15 +64,15 @@ const screenshot = defineTabTool({
     const isElementScreenshot = params.element && params.ref;
 
     const screenshotTarget = isElementScreenshot ? params.element : (params.fullPage ? 'full page' : 'viewport');
-    response.addCode(`// Screenshot ${screenshotTarget} and save it as ${fileName}`);
+    //response.addCode(`// Screenshot ${screenshotTarget} and save it as ${fileName}`);
 
     // Only get snapshot when element screenshot is needed
     const locator = params.ref ? await tab.refLocator({ element: params.element || '', ref: params.ref }) : null;
 
-    if (locator)
-      response.addCode(`await page.${await generateLocator(locator)}.screenshot(${javascript.formatObject(options)});`);
-    else
-      response.addCode(`await page.screenshot(${javascript.formatObject(options)});`);
+    // if (locator)
+      //response.addCode(`await page.${await generateLocator(locator)}.screenshot(${javascript.formatObject(options)});`);
+    // else
+      //response.addCode(`await page.screenshot(${javascript.formatObject(options)});`);
 
     const buffer = locator ? await locator.screenshot(options) : await tab.page.screenshot(options);
     response.addResult(`Took the ${screenshotTarget} screenshot and saved it as ${fileName}`);

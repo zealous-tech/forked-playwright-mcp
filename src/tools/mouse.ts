@@ -35,8 +35,8 @@ const mouseMove = defineTabTool({
   },
 
   handle: async (tab, params, response) => {
-    response.addCode(`// Move mouse to (${params.x}, ${params.y})`);
-    response.addCode(`await page.mouse.move(${params.x}, ${params.y});`);
+    //response.addCode(`// Move mouse to (${params.x}, ${params.y})`);
+    //response.addCode(`await page.mouse.move(${params.x}, ${params.y});`);
 
     await tab.waitForCompletion(async () => {
       await tab.page.mouse.move(params.x, params.y);
@@ -60,10 +60,10 @@ const mouseClick = defineTabTool({
   handle: async (tab, params, response) => {
     response.setIncludeSnapshot();
 
-    response.addCode(`// Click mouse at coordinates (${params.x}, ${params.y})`);
-    response.addCode(`await page.mouse.move(${params.x}, ${params.y});`);
-    response.addCode(`await page.mouse.down();`);
-    response.addCode(`await page.mouse.up();`);
+    //response.addCode(`// Click mouse at coordinates (${params.x}, ${params.y})`);
+    //response.addCode(`await page.mouse.move(${params.x}, ${params.y});`);
+    //response.addCode(`await page.mouse.down();`);
+    //response.addCode(`await page.mouse.up();`);
 
     await tab.waitForCompletion(async () => {
       await tab.page.mouse.move(params.x, params.y);
@@ -91,11 +91,11 @@ const mouseDrag = defineTabTool({
   handle: async (tab, params, response) => {
     response.setIncludeSnapshot();
 
-    response.addCode(`// Drag mouse from (${params.startX}, ${params.startY}) to (${params.endX}, ${params.endY})`);
-    response.addCode(`await page.mouse.move(${params.startX}, ${params.startY});`);
-    response.addCode(`await page.mouse.down();`);
-    response.addCode(`await page.mouse.move(${params.endX}, ${params.endY});`);
-    response.addCode(`await page.mouse.up();`);
+    //response.addCode(`// Drag mouse from (${params.startX}, ${params.startY}) to (${params.endX}, ${params.endY})`);
+    //response.addCode(`await page.mouse.move(${params.startX}, ${params.startY});`);
+    //response.addCode(`await page.mouse.down();`);
+    //response.addCode(`await page.mouse.move(${params.endX}, ${params.endY});`);
+    //response.addCode(`await page.mouse.up();`);
 
     await tab.waitForCompletion(async () => {
       await tab.page.mouse.move(params.startX, params.startY);

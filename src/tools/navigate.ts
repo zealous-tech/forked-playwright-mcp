@@ -35,8 +35,8 @@ const navigate = defineTool({
     await tab.navigate(params.url);
 
     response.setIncludeSnapshot();
-    response.addCode(`// Navigate to ${params.url}`);
-    response.addCode(`await page.goto('${params.url}');`);
+    //response.addCode(`// Navigate to ${params.url}`);
+    //response.addCode(`await page.goto('${params.url}');`);
   },
 });
 
@@ -53,8 +53,8 @@ const goBack = defineTabTool({
   handle: async (tab, params, response) => {
     await tab.page.goBack();
     response.setIncludeSnapshot();
-    response.addCode(`// Navigate back`);
-    response.addCode(`await page.goBack();`);
+    //response.addCode(`// Navigate back`);
+    //response.addCode(`await page.goBack();`);
   },
 });
 
@@ -70,8 +70,8 @@ const goForward = defineTabTool({
   handle: async (tab, params, response) => {
     await tab.page.goForward();
     response.setIncludeSnapshot();
-    response.addCode(`// Navigate forward`);
-    response.addCode(`await page.goForward();`);
+    //response.addCode(`// Navigate forward`);
+    //response.addCode(`await page.goForward();`);
   },
 });
 
