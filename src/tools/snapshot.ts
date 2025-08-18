@@ -71,10 +71,44 @@ const click = defineTabTool({
     }
 
     await tab.waitForCompletion(async () => {
-      if (params.doubleClick)
-        await locator.dblclick({ button });
-      else
-        await locator.click({ button });
+      try {
+        if (params.doubleClick)
+          await locator.dblclick({ button });
+        else
+          await locator.click({ button });
+      } catch (e: any) {
+        const msg = String(e?.message || e);
+        const isIntercept = msg.includes('intercepts pointer events');
+
+        if (isIntercept) {
+          // Detect checkbox input
+          const isCheckbox = await locator.evaluate((el: Element) => {
+            const tag = (el as any).tagName?.toLowerCase?.();
+            const type = (el as any).getAttribute?.('type');
+            return tag === 'input' && type === 'checkbox';
+          });
+
+          if (isCheckbox) {
+            // Prefer clicking the associated label
+            const id = await locator.getAttribute('id');
+            if (id) {
+              const label = tab.page.locator(`label[for="${id}"]`);
+              await label.click({ button });
+              return;
+            }
+            // Fallback: force-check the checkbox
+            await locator.check({ force: true });
+            return;
+          }
+
+          // Non-checkbox: force the click as a last resort
+          await locator.click({ button, force: true });
+          return;
+        }
+
+        // Unknown error, rethrow
+        throw e;
+      }
     });
   },
 });
@@ -166,3 +200,4 @@ export default [
   hover,
   selectOption,
 ];
+
