@@ -686,3 +686,58 @@ http.createServer(async (req, res) => {
 
 
 <!--- End of tools generated section -->
+
+### Publishing
+
+This is a forked version of the Playwright MCP server published under the `@zealous-tech` scope to GitHub Packages registry.
+
+#### Package Information
+
+- **Package name**: `@zealous-tech/playwright-mcp`
+- **Registry**: GitHub Packages (`https://npm.pkg.github.com`)
+
+#### Version Management
+
+**Version Format**: `{major}.{minor}.{patch}-fork.{fork-version}`
+
+- **Base version**: The `{major}.{minor}.{patch}` part comes from the upstream parent repository (the original Playwright MCP project) that this is forked from
+- **Fork identifier**: `-fork.{number}` suffix to distinguish this fork's releases from the upstream releases
+- **Examples**:
+  - `0.0.32-fork.0` - First fork release based on upstream version 0.0.32
+  - `0.0.32-fork.1` - Second fork release still based on upstream version 0.0.32
+  - `0.0.33-fork.0` - First fork release based on upstream version 0.0.33
+
+**Creating a Release**:
+1. Update the version in `package.json` according to the version management rules above.
+2. Create and push a version tag that matches the updated version.
+```bash
+git tag v0.0.33-fork.0
+git push origin v0.0.33-fork.0
+```
+
+#### Authentication & Registry Configuration
+
+**Registry Setup**: Configured in `.npmrc`:
+```
+@zealous-tech:registry=https://npm.pkg.github.com
+always-auth=true
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+**NODE_AUTH_TOKEN Requirements**:
+- **Required permissions**:
+  - `packages:write` - Publish packages to GitHub Packages
+  - `packages:read` - Read packages from GitHub Packages
+- **Token type**: [GitHub Personal Access Token (classic)](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) or [Fine-grained Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token)
+- **Scope**: Must have access to the `zealous-tech/forked-playwright-mcp` repository
+- **For GitHub Actions**: Automatically provided via `secrets.GITHUB_TOKEN`
+
+#### Publishing Methods
+
+**1. Automated Publishing** (Recommended):
+- Triggered when a version tag matching `v*` is pushed
+
+**2. Manual Publishing**:
+```bash
+npm run npm-publish
+```

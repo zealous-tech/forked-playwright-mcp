@@ -1,11 +1,11 @@
 {
-  "name": "@playwright/mcp",
-  "version": "0.0.32",
+  "name": "@zealous-tech/playwright-mcp",
+  "version": "0.0.32-fork.0",
   "description": "Playwright Tools for MCP",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ani-im/playwright-mcp.git"
+    "url": "git+https://github.com/zealous-tech/forked-playwright-mcp.git"
   },
   "homepage": "https://playwright.dev",
   "engines": {
