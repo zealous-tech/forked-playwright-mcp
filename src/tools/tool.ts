@@ -59,10 +59,10 @@ export function defineTabTool<Input extends z.Schema>(tool: TabTool<Input>): Too
     handle: async (context, params, response) => {
       const tab = context.currentTabOrDie();
       const modalStates = tab.modalStates().map(state => state.type);
-      if (tool.clearsModalState && !modalStates.includes(tool.clearsModalState))
-        throw new Error(`The tool "${tool.schema.name}" can only be used when there is related modal state present.\n` + tab.modalStatesMarkdown().join('\n'));
-      if (!tool.clearsModalState && modalStates.length)
-        throw new Error(`Tool "${tool.schema.name}" does not handle the modal state.\n` + tab.modalStatesMarkdown().join('\n'));
+      // if (tool.clearsModalState && !modalStates.includes(tool.clearsModalState))
+      //   throw new Error(`The tool "${tool.schema.name}" can only be used when there is related modal state present.\n` + tab.modalStatesMarkdown().join('\n'));
+      // if (!tool.clearsModalState && modalStates.length)
+      //   throw new Error(`Tool "${tool.schema.name}" does not handle the modal state.\n` + tab.modalStatesMarkdown().join('\n'));
       return tool.handle(tab, params, response);
     },
   };

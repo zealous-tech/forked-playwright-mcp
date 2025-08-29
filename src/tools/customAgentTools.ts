@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defineTabTool } from './tool.js';
+import { defineTabTool, defineTool } from './tool.js';
 import type * as playwright from 'playwright';
 
 const elementStyleSchema = z.object({
@@ -873,7 +873,10 @@ const checkElementInSnapshotSchema = z.object({
   elements: z.array(z.object({
     ref: z.string().describe('Exact target element reference from the page snapshot to check for existence'),
     element: z.string().describe('Human-readable element description for logging purposes'),
-  })).min(1).describe('Array of elements to check for existence in the snapshot. Can contain one or multiple elements.'),
+    matchType: z.enum(["contains", "not-contains"]).default("contains").describe(
+      "Type of match for this specific element: 'contains' checks if element is present, 'not-contains' checks that element is NOT present"
+    ),
+  })).min(1).describe('Array of elements to check for existence in the snapshot. Each element can have its own match type.'),
 });
 
 const check_element_in_snapshot = defineTabTool({
@@ -893,14 +896,21 @@ const check_element_in_snapshot = defineTabTool({
         // Get the current snapshot
         const snapshotMd: string = await tab.captureSnapshot();
         
-        // Check each element
-        const elementResults = elements.map(({ ref, element }) => {
+        // Check each element with its own match type
+        const elementResults = elements.map(({ ref, element, matchType }) => {
           const refExists = snapshotMd.includes(`[ref=${ref}]`);
+          let result;
+          if (matchType === "contains") {
+            result = refExists ? "pass" : "fail";
+          } else if (matchType === "not-contains") {
+            result = !refExists ? "pass" : "fail";
+          }
           return {
             ref,
             element,
+            matchType,
             exists: refExists,
-            result: refExists ? "pass" : "fail"
+            result
           };
         });
         
@@ -915,15 +925,15 @@ const check_element_in_snapshot = defineTabTool({
             failed: elements.length - passedCount,
             status: overallStatus,
             message: overallStatus === "pass" 
-              ? `All ${elements.length} elements found in snapshot` 
-              : `${passedCount}/${elements.length} elements found in snapshot`
+              ? `All ${elements.length} elements passed their individual checks` 
+              : `${passedCount}/${elements.length} elements passed their individual checks`
           },
           snapshot: {
             snapshotLength: snapshotMd.length
           }
         };
 
-        console.log("Check elements in snapshot:", payload);
+        //console.log("Check elements in snapshot:", payload);
         response.addResult(JSON.stringify(payload, null, 2));
       } catch (error) {
         const errorMessage = `Failed to check elements in snapshot. Error: ${error instanceof Error ? error.message : String(error)}`;
@@ -931,6 +941,7 @@ const check_element_in_snapshot = defineTabTool({
           elements: elements.map(({ ref, element }) => ({
             ref,
             element,
+            matchType: "contains",
             exists: false,
             result: "error"
           })),
@@ -951,12 +962,40 @@ const check_element_in_snapshot = defineTabTool({
 // Function to check if alert dialog is present in snapshot
 function hasAlertDialog(snapshotContent: string): boolean {
   // Check for dialog information in the snapshot
-  return snapshotContent.includes('### Modal state') &&
-      snapshotContent.includes('dialog with message');
+  const hasModalState = snapshotContent.includes('### Modal state');
+  const hasDialogMessage = snapshotContent.includes('dialog with message');
+  const hasNoModalState = snapshotContent.includes('There is no modal state present');
+  
+  console.log('hasModalState:', hasModalState);
+  console.log('hasDialogMessage:', hasDialogMessage);
+  console.log('hasNoModalState:', hasNoModalState);
+  
+  return hasModalState && hasDialogMessage && !hasNoModalState;
+}
+
+// Function to extract alert dialog text from snapshot
+function getAlertDialogText(snapshotContent: string): string | null {
+  if (!hasAlertDialog(snapshotContent)) {
+    return null;
+  }
+  
+  // Look for dialog message pattern: "dialog with message "text""
+  const dialogMatch = snapshotContent.match(/dialog with message "([^"]+)"/);
+  if (dialogMatch) {
+    return dialogMatch[1];
+  }
+  
+  return null;
 }
 
 const checkAlertInSnapshotSchema = z.object({
   element: z.string().describe('Human-readable element description for logging purposes'),
+  matchType: z.enum(["contains", "not-contains"]).default("contains").describe(
+    "Type of match: 'contains' checks if alert dialog is present, 'not-contains' checks that alert dialog is NOT present"
+  ),
+  hasText: z.string().optional().describe(
+    "Optional text to check if it exists in the alert dialog message. If provided and alert exists, will verify if this text is present in the alert message"
+  ),
 });
 
 const check_alert_in_snapshot = defineTabTool({
@@ -968,48 +1007,105 @@ const check_alert_in_snapshot = defineTabTool({
     inputSchema: checkAlertInSnapshotSchema,
     type: 'readOnly',
   },
+  //clearsModalState: 'dialog',
   handle: async (tab, params, response) => {
-    const { element } = checkAlertInSnapshotSchema.parse(params);
+    const { element, matchType, hasText } = checkAlertInSnapshotSchema.parse(params);
 
-    await tab.waitForCompletion(async () => {
-      try {
-        // Get the current snapshot
-        const snapshotMd: string = await tab.captureSnapshot();
-        
-        // Check if alert dialog exists in the snapshot
-        const alertExists = hasAlertDialog(snapshotMd);
-        
-        const payload = {
-          element,
-          alertExists,
-          summary: {
-            status: alertExists ? "pass" : "fail",
-            message: alertExists ? "Alert dialog found in snapshot" : "Alert dialog not found in snapshot"
-          },
-          snapshot: {
-            containsAlert: alertExists,
-            snapshotLength: snapshotMd.length
-          }
-        };
-
-        console.log("Check alert in snapshot:", payload);
-        response.addResult(JSON.stringify(payload, null, 2));
-      } catch (error) {
-        const errorMessage = `Failed to check alert dialog in snapshot. Error: ${error instanceof Error ? error.message : String(error)}`;
-        const errorPayload = {
-          element,
-          alertExists: false,
-          summary: {
-            status: "error",
-            message: errorMessage
-          },
-          error: error instanceof Error ? error.message : String(error)
-        };
-        
-        console.error("Check alert in snapshot error:", errorPayload);
-        response.addResult(JSON.stringify(errorPayload, null, 2));
+    try {
+      // Get the current snapshot
+      console.log("start capture snapshot");
+      const snapshotMd: string = await tab.captureSnapshot();
+      console.log('snapshotMd length:', snapshotMd.length);
+      console.log('snapshotMd preview:', snapshotMd.substring(0, 200));
+      
+      // Check if alert dialog exists in the snapshot
+      const alertExists = hasAlertDialog(snapshotMd);
+      console.log('alertExists', alertExists);
+      console.log('matchType:', matchType);
+      console.log('hasText:', hasText);
+      
+      // Get alert dialog text if it exists
+      const alertText = alertExists ? getAlertDialogText(snapshotMd) : null;
+      console.log('alertText:', alertText);
+      
+      // Check text if hasText is provided and alert exists
+      let textCheckPassed = true;
+      let textCheckMessage = "";
+      if (hasText && alertExists && alertText) {
+        textCheckPassed = alertText.includes(hasText);
+        textCheckMessage = textCheckPassed 
+          ? `Alert text contains expected text: "${hasText}"`
+          : `Alert text does not contain expected text: "${hasText}". Actual text: "${alertText}"`;
+        console.log('textCheckPassed:', textCheckPassed);
+        console.log('textCheckMessage:', textCheckMessage);
       }
-    });
+      
+      // Apply match type logic
+      let passed;
+      if (matchType === "contains") {
+        passed = alertExists && (hasText ? textCheckPassed : true);
+      } else if (matchType === "not-contains") {
+        passed = !alertExists;
+      }
+      console.log('passed:', passed);
+      
+      const payload = {
+        element,
+        matchType,
+        hasText,
+        alertExists,
+        alertText,
+        textCheckPassed,
+        textCheckMessage,
+        summary: {
+          status: passed ? "pass" : "fail",
+          message: matchType === "contains" 
+            ? (passed 
+              ? (hasText 
+                ? `Alert dialog found in snapshot and contains expected text: "${hasText}"`
+                : "Alert dialog found in snapshot")
+              : (hasText 
+                ? `Alert dialog found but does not contain expected text: "${hasText}"`
+                : "Alert dialog not found in snapshot"))
+            : (passed ? "Alert dialog not found in snapshot (as expected)" : "Alert dialog found in snapshot (unexpected)")
+        },
+        snapshot: {
+          containsAlert: alertExists,
+          snapshotLength: snapshotMd.length
+        }
+      };
+
+      console.log("Check alert in snapshot:", payload);
+      const resultString = JSON.stringify(payload, null, 2);
+      console.log("Result string:", resultString);
+      response.addResult(resultString);
+      console.log("Result added to response");
+      console.log("Function completed successfully");
+    } catch (error) {
+      const errorMessage = `Failed to check alert dialog in snapshot. Error: ${error instanceof Error ? error.message : String(error)}`;
+      const errorPayload = {
+        element,
+        matchType,
+        hasText,
+        alertExists: false,
+        alertText: null,
+        textCheckPassed: false,
+        textCheckMessage: "",
+        summary: {
+          status: "error",
+          message: errorMessage
+        },
+        error: error instanceof Error ? error.message : String(error)
+      };
+      
+      console.error("Check alert in snapshot error:", errorPayload);
+      const errorResultString = JSON.stringify(errorPayload, null, 2);
+      console.log("Error result string:", errorResultString);
+      response.addResult(errorResultString);
+      console.log("Error result added to response");
+      console.log("Function completed with error");
+    }
+    console.log("Function completed");
   },
 });
 
